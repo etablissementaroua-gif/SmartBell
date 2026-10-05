@@ -16,16 +16,17 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
 }) => {
   const [activePreset, setActivePreset] = useState<string>('preset-1');
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [newTime, setNewTime] = useState<string>('09:00');
+  const [newTime, setNewTime] = useState<string>('08:00');
   const [newType, setNewType] = useState<BellType>('ENTRY');
   const [newLabel, setNewLabel] = useState<string>('');
-  const [newDuration, setNewDuration] = useState<number>(10);
+  const [newDuration, setNewDuration] = useState<number>(15);
+  const [newZone, setNewZone] = useState<string>('ALL');
   const [testingId, setTestingId] = useState<string | null>(null);
 
   const presets = [
-    { id: 'preset-1', name: 'الدوام المدرسي الكامل (8 مهام)', active: true, count: 6 },
-    { id: 'preset-2', name: 'التوقيت المدرسي الرمضاني', active: false, count: 5 },
-    { id: 'preset-3', name: 'جدول فترات الامتحانات الموحدة', active: false, count: 4 },
+    { id: 'preset-1', name: 'الدوام المدرسي الكامل', active: activePreset === 'preset-1', count: schedules.length },
+    { id: 'preset-2', name: 'التوقيت المدرسي الرمضاني', active: activePreset === 'preset-2', count: 0 },
+    { id: 'preset-3', name: 'جدول فترات الامتحانات الموحدة', active: activePreset === 'preset-3', count: 0 },
   ];
 
   const handleTestSound = (id: string) => {
@@ -46,7 +47,7 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
       label: newLabel.trim(),
       details: 'تم الإدراج يدوياً من لوحة التحكم',
       duration_seconds: newDuration,
-      target_zones: ['كافة المناطق'],
+      target_zones: [newZone],
       is_enabled: true,
     });
 
@@ -147,90 +148,110 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
         </div>
 
         <div className="overflow-x-auto rounded-xl bg-surface-container-low border border-surface-container">
-          <table className="w-full text-right border-collapse text-xs">
-            <thead>
-              <tr className="text-on-surface-variant font-bold bg-surface-container">
-                <th className="py-space-sm px-space-md">الوقت</th>
-                <th className="py-space-sm px-space-md">النوع</th>
-                <th className="py-space-sm px-space-md">المهمة والوصف</th>
-                <th className="py-space-sm px-space-md">مدة الرنين</th>
-                <th className="py-space-sm px-space-md">المناطق الموجهة</th>
-                <th className="py-space-sm px-space-md text-center">التفعيل التلقائي</th>
-                <th className="py-space-sm px-space-md text-center">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-container">
-              {schedules.map((schedule) => (
-                <tr key={schedule.id} className="hover:bg-surface-container-lowest/60 transition-colors">
-                  <td className="py-space-md px-space-md font-mono font-bold text-sm text-teal-dark">
-                    {schedule.bell_time} {schedule.bell_time.startsWith('12') || schedule.bell_time.startsWith('14') ? 'م' : 'ص'}
-                  </td>
-                  <td className="py-space-md px-space-md">
-                    {getBellTypeBadge(schedule.bell_type)}
-                  </td>
-                  <td className="py-space-md px-space-md">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-on-surface text-[13px]">{schedule.label}</span>
-                      <span className="text-[11px] text-on-surface-variant">{schedule.details}</span>
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md font-mono font-bold text-on-surface">
-                    {schedule.duration_seconds} ثانية
-                  </td>
-                  <td className="py-space-md px-space-md">
-                    <div className="flex gap-1 flex-wrap">
-                      {schedule.target_zones.map((zone, idx) => (
-                        <span key={idx} className="px-1.5 py-0.5 rounded bg-surface-container text-[10px] text-on-surface font-medium">
-                          {zone}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md text-center">
-                    <button
-                      type="button"
-                      onClick={() => onToggleSchedule(schedule.id)}
-                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 inline-block ${
-                        schedule.is_enabled ? 'bg-teal-dark' : 'bg-surface-container-highest'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${
-                          schedule.is_enabled ? '-translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </td>
-                  <td className="py-space-md px-space-md text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleTestSound(schedule.id)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          testingId === schedule.id
-                            ? 'bg-teal-dark text-white animate-spin'
-                            : 'text-on-surface-variant hover:text-teal-dark hover:bg-surface-container'
-                        }`}
-                        title="اختبار الصوت"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          {testingId === schedule.id ? 'refresh' : 'play_arrow'}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteSchedule(schedule.id)}
-                        className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-surface-container transition-colors"
-                        title="حذف الموعد"
-                      >
-                        <span className="material-symbols-outlined text-lg">delete</span>
-                      </button>
-                    </div>
-                  </td>
+          {schedules.length === 0 ? (
+            <div className="py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-secondary-container/40 flex items-center justify-center text-teal-dark shadow-sm">
+                <span className="material-symbols-outlined text-3xl">notifications_off</span>
+              </div>
+              <h3 className="text-base font-bold text-on-surface">لا توجد أجراس مجدولة حالياً، يرجى إضافة مواعيد الحصص</h3>
+              <p className="text-xs text-on-surface-variant max-w-md leading-relaxed">
+                النظام نظيف وخام تماماً وجاهز لبرمجة جدول مواعيد الحصص المدرسية والاستراحات اليومية الخاصة بالمؤسسة.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="mt-2 flex items-center gap-2 px-space-lg py-2.5 bg-teal-dark hover:bg-secondary text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-base">add_alarm</span>
+                <span>إضافة أول موعد جرس الآن</span>
+              </button>
+            </div>
+          ) : (
+            <table className="w-full text-right border-collapse text-xs">
+              <thead>
+                <tr className="text-on-surface-variant font-bold bg-surface-container">
+                  <th className="py-space-sm px-space-md">الوقت</th>
+                  <th className="py-space-sm px-space-md">النوع</th>
+                  <th className="py-space-sm px-space-md">المهمة والوصف</th>
+                  <th className="py-space-sm px-space-md">مدة الرنين</th>
+                  <th className="py-space-sm px-space-md">المناطق الموجهة</th>
+                  <th className="py-space-sm px-space-md text-center">التفعيل التلقائي</th>
+                  <th className="py-space-sm px-space-md text-center">إجراءات</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-surface-container">
+                {schedules.map((schedule) => (
+                  <tr key={schedule.id} className="hover:bg-surface-container-lowest/60 transition-colors">
+                    <td className="py-space-md px-space-md font-mono font-bold text-sm text-teal-dark">
+                      {schedule.bell_time} {schedule.bell_time.startsWith('12') || schedule.bell_time.startsWith('14') ? 'م' : 'ص'}
+                    </td>
+                    <td className="py-space-md px-space-md">
+                      {getBellTypeBadge(schedule.bell_type)}
+                    </td>
+                    <td className="py-space-md px-space-md">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-on-surface text-[13px]">{schedule.label}</span>
+                        <span className="text-[11px] text-on-surface-variant">{schedule.details}</span>
+                      </div>
+                    </td>
+                    <td className="py-space-md px-space-md font-mono font-bold text-on-surface">
+                      {schedule.duration_seconds} ثانية
+                    </td>
+                    <td className="py-space-md px-space-md">
+                      <div className="flex gap-1 flex-wrap">
+                        {schedule.target_zones.map((zone, idx) => (
+                          <span key={idx} className="px-1.5 py-0.5 rounded bg-surface-container text-[10px] text-on-surface font-medium">
+                            {zone}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-space-md px-space-md text-center">
+                      <button
+                        type="button"
+                        onClick={() => onToggleSchedule(schedule.id)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 inline-block ${
+                          schedule.is_enabled ? 'bg-teal-dark' : 'bg-surface-container-highest'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${
+                            schedule.is_enabled ? '-translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </td>
+                    <td className="py-space-md px-space-md text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleTestSound(schedule.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            testingId === schedule.id
+                              ? 'bg-teal-dark text-white animate-spin'
+                              : 'text-on-surface-variant hover:text-teal-dark hover:bg-surface-container'
+                          }`}
+                          title="اختبار الصوت"
+                        >
+                          <span className="material-symbols-outlined text-lg">
+                            {testingId === schedule.id ? 'refresh' : 'play_arrow'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteSchedule(schedule.id)}
+                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-surface-container transition-colors"
+                          title="حذف الموعد"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -258,7 +279,7 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="مثال: جرس الحصة الثانية"
+                  placeholder="مثال: بداية الحصة الأولى"
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
                   className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none"
@@ -292,16 +313,33 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-on-surface-variant">مدة الرنين بالثواني:</label>
-                <input
-                  type="number"
-                  min="3"
-                  max="60"
-                  value={newDuration}
-                  onChange={(e) => setNewDuration(Number(e.target.value))}
-                  className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono"
-                />
+              <div className="grid grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">مدة الرنين بالثواني:</label>
+                  <input
+                    type="number"
+                    min="3"
+                    max="60"
+                    value={newDuration}
+                    onChange={(e) => setNewDuration(Number(e.target.value))}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">منطقة البث:</label>
+                  <select
+                    value={newZone}
+                    onChange={(e) => setNewZone(e.target.value)}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none cursor-pointer"
+                  >
+                    <option value="ALL">كافة أرجاء المدرسة</option>
+                    <option value="ZONE_A">الساحة والملاعب</option>
+                    <option value="ZONE_B">الممرات والمطعم</option>
+                    <option value="ZONE_C">الإدارة وقاعة الأساتذة</option>
+                    <option value="ZONE_D">المصلى المدرسي</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-space-md border-t border-surface-container">

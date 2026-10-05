@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TabType, BellSchedule, IntermissionTrack, AudioZone } from './types';
-import { initialBellSchedules, initialIntermissionTracks, initialAudioZones } from './core/mockData';
+import { initialAudioZones } from './core/mockData';
 import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -16,8 +16,8 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('live-control-dashboard');
   const [masterVolume, setMasterVolume] = useState<number>(75);
   const [isEmergencyMuted, setIsEmergencyMuted] = useState<boolean>(false);
-  const [schedules, setSchedules] = useState<BellSchedule[]>(initialBellSchedules);
-  const [tracks, setTracks] = useState<IntermissionTrack[]>(initialIntermissionTracks);
+  const [schedules, setSchedules] = useState<BellSchedule[]>([]);
+  const [tracks, setTracks] = useState<IntermissionTrack[]>([]);
   const [zones, setZones] = useState<AudioZone[]>(initialAudioZones);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
@@ -107,6 +107,19 @@ export const App: React.FC = () => {
     await supabaseService.toggleIntermissionTrack(id, nextActive);
   };
 
+  const handleAddTrack = async (newTrack: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => {
+    await supabaseService.createIntermissionTrack(newTrack);
+    const fresh = await supabaseService.fetchIntermissionTracks();
+    setTracks(fresh);
+  };
+
+  const handleDeleteTrack = async (id: string) => {
+    setTracks((prev) => prev.filter((t) => t.id !== id));
+    await supabaseService.deleteIntermissionTrack(id);
+    const fresh = await supabaseService.fetchIntermissionTracks();
+    setTracks(fresh);
+  };
+
   const handleMoveTrack = (id: string, direction: 'up' | 'down') => {
     setTracks((prev) => {
       const idx = prev.findIndex((t) => t.id === id);
@@ -186,6 +199,8 @@ export const App: React.FC = () => {
               tracks={tracks}
               onToggleTrack={handleToggleTrack}
               onMoveTrack={handleMoveTrack}
+              onAddTrack={handleAddTrack}
+              onDeleteTrack={handleDeleteTrack}
             />
           )}
 

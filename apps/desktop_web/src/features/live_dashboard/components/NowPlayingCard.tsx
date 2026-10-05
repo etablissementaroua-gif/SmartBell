@@ -8,22 +8,28 @@ interface NowPlayingCardProps {
 }
 
 export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsertTrack }) => {
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [progress, setProgress] = useState<number>(245); // seconds elapsed (approx 04:05)
-  const totalDuration = 510; // 08:30 in seconds
+  const hasTracks = tracks.length > 0;
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
   const [isYardMuted, setIsYardMuted] = useState<boolean>(false);
   const [yardVolume, setYardVolume] = useState<number>(75);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
 
+  const currentTrack = hasTracks ? (tracks[currentTrackIndex] || tracks[0]) : null;
+  const totalDuration = currentTrack ? (currentTrack.duration_seconds || 120) : 0;
+
   useEffect(() => {
     let timer: number;
-    if (isPlaying) {
+    if (isPlaying && hasTracks && totalDuration > 0) {
       timer = window.setInterval(() => {
         setProgress((prev) => (prev >= totalDuration ? 0 : prev + 1));
       }, 1000);
+    } else if (!hasTracks) {
+      setIsPlaying(false);
+      setProgress(0);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, totalDuration]);
+  }, [isPlaying, hasTracks, totalDuration]);
 
   const formatSeconds = (sec: number) => {
     const mins = Math.floor(sec / 60);
@@ -31,16 +37,23 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const remainingSeconds = totalDuration - progress;
+  const remainingSeconds = Math.max(0, totalDuration - progress);
 
   return (
     <div className="flex flex-col gap-space-lg w-full">
       {/* Broadcast Status Pill */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-space-md py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold text-xs shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-teal-dark animate-ping"></span>
-          بث حي مستمر
-        </span>
+        {hasTracks ? (
+          <span className="inline-flex items-center gap-1.5 px-space-md py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold text-xs shadow-sm">
+            <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-teal-dark animate-ping' : 'bg-amber-500'}`}></span>
+            {isPlaying ? 'بث حي مستمر' : 'البث متوقف مؤقتاً'}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-space-md py-1 rounded-full bg-surface-container-high text-on-surface-variant font-bold text-xs shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+            الإذاعة في وضع الاستعداد
+          </span>
+        )}
         <span className="text-xs text-on-surface-variant font-mono">
           VLAN 20 • Multi-Cast Audio
         </span>
@@ -56,24 +69,26 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
               alt="Radio Logo"
               className="w-12 h-12 object-contain"
             />
-            {isPlaying && (
+            {isPlaying && hasTracks && (
               <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-teal-accent ring-2 ring-primary-container animate-pulse"></span>
             )}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] font-bold text-teal-dark uppercase tracking-wider bg-secondary-container/40 px-2 py-0.5 rounded-md">
-                إذاعة الصباح
+                {hasTracks ? (currentTrack?.session === 'NOON_BREAK' ? 'استراحة الظهيرة' : 'إذاعة الصباح') : 'وضع الاستعداد'}
               </span>
               <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-low px-1.5 py-0.5 rounded">
-                بث رقمي عالي النقاء
+                {hasTracks ? 'بث رقمي عالي النقاء' : 'في انتظار البرمجة'}
               </span>
             </div>
-            <h3 className="font-bold text-[16px] text-on-surface mt-1 truncate">
-              برنامج الصباح: نفحات تربوية وإيمانية
+            <h3 className="font-bold text-[15px] md:text-[16px] text-on-surface mt-1 truncate">
+              {hasTracks ? currentTrack?.title : 'الإذاعة في وضع الاستعداد - لا توجد فقرة محددة'}
             </h3>
             <p className="text-[12px] text-on-surface-variant truncate">
-              إعداد جماعة الإذاعة المدرسية والإرشاد الطلابي
+              {hasTracks
+                ? (currentTrack?.speaker_or_artist || 'إعداد الإذاعة المدرسية')
+                : 'يرجى إضافة مقاطع وفقرات من تبويب قائمة الاستراحات'}
             </p>
           </div>
         </div>
@@ -82,18 +97,20 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         <div className="bg-surface-container-low p-space-md rounded-xl border border-surface-container flex flex-col gap-2">
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono">
             <span>WAVEFORM LIVE</span>
-            <span className="text-teal-dark font-bold">24-bit • 48 kHz PCM</span>
+            <span className="text-teal-dark font-bold">
+              {hasTracks && isPlaying ? '24-bit • 48 kHz PCM' : 'جاهز للتشغيل'}
+            </span>
           </div>
           <div className="flex items-center justify-center gap-1.5 h-14 overflow-hidden px-2">
             {[35, 60, 45, 85, 95, 70, 40, 65, 80, 50, 90, 100, 75, 45, 60, 85, 70, 40, 55, 75, 65, 90, 80, 50].map((height, i) => (
               <div
                 key={i}
                 className={`w-1 rounded-full transition-all duration-300 ${
-                  isPlaying ? 'bg-teal-dark' : 'bg-surface-container-highest'
+                  isPlaying && hasTracks ? 'bg-teal-dark' : 'bg-surface-container-highest'
                 }`}
                 style={{
-                  height: isPlaying ? `${Math.max(15, (height * (yardVolume / 100)))}%` : '15%',
-                  animation: isPlaying ? `pulse-wave ${(0.6 + (i % 5) * 0.2)}s ease-in-out infinite ${(i % 4) * 0.15}s` : 'none',
+                  height: isPlaying && hasTracks ? `${Math.max(15, (height * (yardVolume / 100)))}%` : '15%',
+                  animation: isPlaying && hasTracks ? `pulse-wave ${(0.6 + (i % 5) * 0.2)}s ease-in-out infinite ${(i % 4) * 0.15}s` : 'none',
                 }}
               />
             ))}
@@ -105,12 +122,16 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <div className="relative w-full h-2 bg-surface-container rounded-full overflow-hidden cursor-pointer">
             <div
               className="h-full bg-teal-dark rounded-full transition-all"
-              style={{ width: `${(progress / totalDuration) * 100}%` }}
+              style={{ width: `${totalDuration > 0 ? (progress / totalDuration) * 100 : 0}%` }}
             ></div>
           </div>
           <div className="flex items-center justify-between text-[12px] text-on-surface-variant font-mono">
-            <span className="text-teal-dark font-bold">متبقي: {formatSeconds(remainingSeconds)}</span>
-            <span>الإجمالي: {formatSeconds(totalDuration)}</span>
+            <span className="text-teal-dark font-bold">
+              {hasTracks ? `متبقي: ${formatSeconds(remainingSeconds)}` : 'متبقي: --:--'}
+            </span>
+            <span>
+              {hasTracks ? `الإجمالي: ${formatSeconds(totalDuration)}` : 'الإجمالي: --:--'}
+            </span>
           </div>
         </div>
 
@@ -118,31 +139,41 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         <div className="flex items-center justify-center gap-space-lg py-1">
           <button
             type="button"
-            className="text-on-surface-variant hover:text-teal-dark transition-colors p-1"
+            disabled={!hasTracks}
+            className="text-on-surface-variant hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
             title="تشغيل عشوائي"
           >
             <span className="material-symbols-outlined text-xl">shuffle</span>
           </button>
           <button
             type="button"
+            disabled={!hasTracks || currentTrackIndex === 0}
             onClick={() => {
               const prevIdx = Math.max(0, currentTrackIndex - 1);
               setCurrentTrackIndex(prevIdx);
-              supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
+              if (tracks[prevIdx]) {
+                supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
+              }
             }}
-            className="text-on-surface hover:text-teal-dark transition-colors p-1"
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
             title="المقطع السابق"
           >
             <span className="material-symbols-outlined text-2xl">skip_previous</span>
           </button>
           <button
             type="button"
+            disabled={!hasTracks}
             onClick={() => {
+              if (!hasTracks) return;
               const nextPlaying = !isPlaying;
               setIsPlaying(nextPlaying);
-              supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', tracks[currentTrackIndex]);
+              supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', currentTrack);
             }}
-            className="w-12 h-12 rounded-full bg-teal-dark text-on-primary flex items-center justify-center hover:bg-secondary transition-all shadow-md active:scale-95 ring-4 ring-teal-dark/20"
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ring-4 ${
+              hasTracks
+                ? 'bg-teal-dark text-on-primary hover:bg-secondary ring-teal-dark/20'
+                : 'bg-surface-container text-on-surface-variant opacity-50 cursor-not-allowed ring-transparent'
+            }`}
             title={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
           >
             <span className="material-symbols-outlined text-3xl">
@@ -151,19 +182,23 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </button>
           <button
             type="button"
+            disabled={!hasTracks || currentTrackIndex >= tracks.length - 1}
             onClick={() => {
               const nextIdx = Math.min(tracks.length - 1, currentTrackIndex + 1);
               setCurrentTrackIndex(nextIdx);
-              supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
+              if (tracks[nextIdx]) {
+                supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
+              }
             }}
-            className="text-on-surface hover:text-teal-dark transition-colors p-1"
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
             title="المقطع التالي"
           >
             <span className="material-symbols-outlined text-2xl">skip_next</span>
           </button>
           <button
             type="button"
-            className="text-on-surface-variant hover:text-teal-dark transition-colors p-1"
+            disabled={!hasTracks}
+            className="text-on-surface-variant hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
             title="تكرار الفقرة"
           >
             <span className="material-symbols-outlined text-xl">repeat</span>
@@ -221,43 +256,53 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </span>
         </div>
 
-        {/* Tracks List */}
-        <div className="flex flex-col gap-2">
-          {tracks.map((track, idx) => (
-            <div
-              key={track.id}
-              className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
-                idx === currentTrackIndex
-                  ? 'bg-secondary-container/20 border-teal-dark/30 ring-1 ring-teal-dark/20'
-                  : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center font-mono text-xs font-bold text-on-surface">
-                  {idx + 1}
-                </span>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[13px] text-on-surface">{track.title}</span>
-                  <span className="text-[11px] text-on-surface-variant">{track.speaker_or_artist}</span>
+        {/* Tracks List or Empty State */}
+        {hasTracks ? (
+          <div className="flex flex-col gap-2">
+            {tracks.map((track, idx) => (
+              <div
+                key={track.id}
+                className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                  idx === currentTrackIndex
+                    ? 'bg-secondary-container/20 border-teal-dark/30 ring-1 ring-teal-dark/20'
+                    : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center font-mono text-xs font-bold text-on-surface">
+                    {idx + 1}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[13px] text-on-surface">{track.title}</span>
+                    <span className="text-[11px] text-on-surface-variant">{track.speaker_or_artist}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-on-surface-variant bg-surface-container-lowest px-1.5 py-0.5 rounded">
+                    {track.duration_formatted}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentTrackIndex(idx)}
+                    className="w-7 h-7 rounded-full bg-surface-container-lowest text-teal-dark hover:bg-teal-dark hover:text-on-primary flex items-center justify-center transition-colors shadow-sm"
+                    title="تشغيل هذا المقطع"
+                  >
+                    <span className="material-symbols-outlined text-sm">play_arrow</span>
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-on-surface-variant bg-surface-container-lowest px-1.5 py-0.5 rounded">
-                  {track.duration_formatted}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentTrackIndex(idx)}
-                  className="w-7 h-7 rounded-full bg-surface-container-lowest text-teal-dark hover:bg-teal-dark hover:text-on-primary flex items-center justify-center transition-colors shadow-sm"
-                  title="تشغيل هذا المقطع"
-                >
-                  <span className="material-symbols-outlined text-sm">play_arrow</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-6 px-4 bg-surface-container-low rounded-xl border border-dashed border-surface-container-highest flex flex-col items-center justify-center text-center gap-2">
+            <span className="material-symbols-outlined text-3xl text-on-surface-variant/60">radio</span>
+            <p className="text-xs font-bold text-on-surface">لا توجد فقرات إذاعية مسجلة حالياً</p>
+            <p className="text-[11px] text-on-surface-variant max-w-[240px]">
+              يمكنك إدراج مواد صوتية وأناشيد وفقرات توعوية للتشغيل في الفسحة المدرسية.
+            </p>
+          </div>
+        )}
 
         {/* Insert Track Action */}
         <button
@@ -266,7 +311,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl border border-dashed border-teal-dark/40 hover:border-teal-dark bg-secondary-container/10 hover:bg-secondary-container/20 text-teal-dark font-bold text-xs transition-all"
         >
           <span className="material-symbols-outlined text-base">add_circle</span>
-          <span>إدراج مقطع من مكتبة الوسائط</span>
+          <span>إدراج فقرة إذاعية جديدة</span>
         </button>
       </div>
     </div>

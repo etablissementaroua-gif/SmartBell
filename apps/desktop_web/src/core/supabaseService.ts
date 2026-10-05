@@ -9,8 +9,6 @@ import {
 } from '../types';
 import { 
   initialAudioZones, 
-  initialBellSchedules, 
-  initialIntermissionTracks, 
   initialAdhanConfig, 
   initialLogs 
 } from './mockData';
@@ -67,7 +65,7 @@ export class SupabaseService {
 
   // 2. Fetch Bell Schedules
   public async fetchBellSchedules(): Promise<BellSchedule[]> {
-    if (!isSupabaseConfigured()) return initialBellSchedules;
+    if (!isSupabaseConfigured()) return [];
 
     try {
       const { data, error } = await supabase
@@ -75,8 +73,13 @@ export class SupabaseService {
         .select('*')
         .order('bell_time', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return initialBellSchedules;
+      if (error) {
+        console.warn('⚠️ [SupabaseService] Error fetching bell schedules:', error.message);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
       }
 
       return data.map((s) => ({
@@ -86,18 +89,20 @@ export class SupabaseService {
         bell_type: s.bell_type,
         label: s.label,
         duration_seconds: s.duration_seconds || 10,
-        target_zones: typeof s.target_zones === 'string' ? s.target_zones.split(',') : (s.target_zones || ['ALL']),
+        target_zones: Array.isArray(s.target_zones)
+          ? s.target_zones
+          : (typeof s.target_zones === 'string' ? s.target_zones.split(',') : ['ALL']),
         is_enabled: Boolean(s.is_enabled),
       }));
     } catch (err) {
       console.error('❌ [SupabaseService] Error fetching bell schedules:', err);
-      return initialBellSchedules;
+      return [];
     }
   }
 
   // 3. Fetch Intermission Tracks
   public async fetchIntermissionTracks(): Promise<IntermissionTrack[]> {
-    if (!isSupabaseConfigured()) return initialIntermissionTracks;
+    if (!isSupabaseConfigured()) return [];
 
     try {
       const { data, error } = await supabase
@@ -105,8 +110,13 @@ export class SupabaseService {
         .select('*')
         .order('play_order', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return initialIntermissionTracks;
+      if (error) {
+        console.warn('⚠️ [SupabaseService] Error fetching tracks:', error.message);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
       }
 
       return data.map((t) => ({
@@ -123,7 +133,7 @@ export class SupabaseService {
       }));
     } catch (err) {
       console.error('❌ [SupabaseService] Error fetching tracks:', err);
-      return initialIntermissionTracks;
+      return [];
     }
   }
 
@@ -342,19 +352,33 @@ export class SupabaseService {
 
   public async createBellSchedule(schedule: Omit<BellSchedule, 'id'>): Promise<boolean> {
     try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(schedule.preset_id || '');
+      let validPresetId: string | null = isUuid ? schedule.preset_id : null;
+
+      if (!validPresetId) {
+        const { data: presetData } = await supabase.from('bell_presets').select('id').limit(1);
+        if (presetData && presetData.length > 0) {
+          validPresetId = presetData[0].id;
+        }
+      }
+
       const { error } = await supabase.from('bell_schedules').insert({
-        preset_id: schedule.preset_id,
+        preset_id: validPresetId,
         bell_time: schedule.bell_time,
         bell_type: schedule.bell_type,
         label: schedule.label,
         duration_seconds: schedule.duration_seconds,
-        target_zones: schedule.target_zones.join(','),
+        target_zones: Array.isArray(schedule.target_zones) ? schedule.target_zones : ['ALL'],
         is_enabled: schedule.is_enabled,
       });
 
-      return !error;
+      if (error) {
+        console.error('❌ [SupabaseService] Error creating schedule:', error);
+        return false;
+      }
+      return true;
     } catch (err) {
-      console.error('❌ [SupabaseService] Error creating schedule:', err);
+      console.error('❌ [SupabaseService] Exception creating schedule:', err);
       return false;
     }
   }
@@ -366,9 +390,57 @@ export class SupabaseService {
         .delete()
         .eq('id', scheduleId);
 
-      return !error;
+      if (error) {
+        console.error('❌ [SupabaseService] Error deleting schedule:', error);
+        return false;
+      }
+      return true;
     } catch (err) {
-      console.error('❌ [SupabaseService] Error deleting schedule:', err);
+      console.error('❌ [SupabaseService] Exception deleting schedule:', err);
+      return false;
+    }
+  }
+
+  public async createIntermissionTrack(
+    track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('intermission_tracks').insert({
+        session: track.session,
+        category: track.category,
+        title: track.title,
+        speaker_or_artist: track.speaker_or_artist,
+        duration_seconds: track.duration_seconds || 120,
+        audio_url: track.audio_url || 'https://cdn.smartbell.local/audio/custom_track.mp3',
+        play_order: track.play_order || 1,
+        is_active: track.is_active ?? true,
+      });
+
+      if (error) {
+        console.error('❌ [SupabaseService] Error creating intermission track:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('❌ [SupabaseService] Exception creating intermission track:', err);
+      return false;
+    }
+  }
+
+  public async deleteIntermissionTrack(trackId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('intermission_tracks')
+        .delete()
+        .eq('id', trackId);
+
+      if (error) {
+        console.error('❌ [SupabaseService] Error deleting intermission track:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('❌ [SupabaseService] Exception deleting intermission track:', err);
       return false;
     }
   }
