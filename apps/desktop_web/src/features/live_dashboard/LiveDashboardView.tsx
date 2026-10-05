@@ -3,6 +3,7 @@ import { NowPlayingCard } from './components/NowPlayingCard';
 import { OverridesPanel } from './components/OverridesPanel';
 import { TimelineCountdown } from './components/TimelineCountdown';
 import { BellSchedule, IntermissionTrack } from '../../types';
+import { supabaseService } from '../../core/supabaseService';
 
 interface LiveDashboardViewProps {
   schedules: BellSchedule[];
@@ -21,8 +22,17 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
 }) => {
   const [notification, setNotification] = useState<string | null>(null);
 
-  const triggerInstantBell = (bellName: string, duration: number) => {
-    setNotification(`🔔 جاري بث [${bellName}] لكافة أرجاء المدرسة لمدة ${duration} ثانية...`);
+  const triggerInstantBell = async (
+    bellName: string,
+    duration: number,
+    command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END',
+    targetZone: string = 'ALL'
+  ) => {
+    setNotification(`🔔 جاري بث [${bellName}] لنطاق [${targetZone}] لمدة ${duration} ثانية...`);
+    await supabaseService.triggerInstantOverride(command, targetZone, {
+      duration_seconds: duration,
+      bell_name: bellName,
+    });
     setTimeout(() => {
       setNotification(null);
     }, 4000);

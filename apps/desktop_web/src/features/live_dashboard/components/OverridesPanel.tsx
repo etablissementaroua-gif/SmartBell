@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
+import { supabaseService } from '../../../core/supabaseService';
 
 interface OverridesPanelProps {
   isEmergencyMuted: boolean;
   onToggleEmergencyMute: () => void;
-  onTriggerInstantBell: (bellName: string, duration: number) => void;
+  onTriggerInstantBell: (
+    bellName: string,
+    duration: number,
+    command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END',
+    targetZone?: string
+  ) => void;
 }
 
 export const OverridesPanel: React.FC<OverridesPanelProps> = ({
@@ -13,8 +19,8 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
 }) => {
   const [isMicActive, setIsMicActive] = useState<boolean>(false);
   const [selectedZones, setSelectedZones] = useState<string[]>([
-    'الساحة الرئيسية',
-    'الممرات الداخلية',
+    'ZONE_A',
+    'ZONE_B',
   ]);
   const [activeBell, setActiveBell] = useState<string | null>(null);
 
@@ -24,12 +30,26 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
     );
   };
 
-  const handlePlayBell = (bellName: string, duration: number) => {
+  const handlePlayBell = (
+    bellName: string,
+    duration: number,
+    command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END'
+  ) => {
     setActiveBell(bellName);
-    onTriggerInstantBell(bellName, duration);
+    onTriggerInstantBell(bellName, duration, command, selectedZones.join(',') || 'ALL');
     setTimeout(() => {
       setActiveBell(null);
     }, duration * 1000);
+  };
+
+  const handleToggleMic = async () => {
+    const nextState = !isMicActive;
+    setIsMicActive(nextState);
+    await supabaseService.triggerInstantOverride(
+      'MIC_BROADCAST',
+      selectedZones.join(',') || 'ALL',
+      { action: nextState ? 'START' : 'STOP' }
+    );
   };
 
   return (
@@ -106,7 +126,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => handlePlayBell('جرس الدخول المباشر', 20)}
+                onClick={() => handlePlayBell('جرس الدخول المباشر', 20, 'INSTANT_ENTRY')}
                 disabled={activeBell === 'جرس الدخول المباشر'}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
                   activeBell === 'جرس الدخول المباشر'
@@ -134,7 +154,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => handlePlayBell('جرس الانصراف', 15)}
+                onClick={() => handlePlayBell('جرس الانصراف', 15, 'INSTANT_EXIT')}
                 disabled={activeBell === 'جرس الانصراف'}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
                   activeBell === 'جرس الانصراف'
@@ -162,7 +182,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10)}
+                onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10, 'PERIOD_END')}
                 disabled={activeBell === 'تنبيه نهاية الحصة'}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
                   activeBell === 'تنبيه نهاية الحصة'
@@ -213,7 +233,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setIsMicActive(!isMicActive)}
+            onClick={handleToggleMic}
             className={`w-13 h-7 rounded-full transition-colors relative p-0.5 focus:outline-none ${
               isMicActive ? 'bg-teal-dark' : 'bg-surface-container-highest'
             }`}

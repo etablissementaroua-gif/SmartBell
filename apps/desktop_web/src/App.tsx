@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TabType, BellSchedule, IntermissionTrack, AudioZone } from './types';
 import { initialBellSchedules, initialIntermissionTracks, initialAudioZones } from './core/mockData';
+import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { LiveDashboardView } from './features/live_dashboard/LiveDashboardView';
@@ -20,30 +21,90 @@ export const App: React.FC = () => {
   const [zones, setZones] = useState<AudioZone[]>(initialAudioZones);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
-  // Handlers
-  const handleToggleEmergencyMute = () => {
-    setIsEmergencyMuted((prev) => !prev);
+  // 1. Initial Load from Supabase with Fallback
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      const [fetchedZones, fetchedSchedules, fetchedTracks] = await Promise.all([
+        supabaseService.fetchAudioZones(),
+        supabaseService.fetchBellSchedules(),
+        supabaseService.fetchIntermissionTracks(),
+      ]);
+
+      if (isMounted) {
+        setZones(fetchedZones);
+        setSchedules(fetchedSchedules);
+        setTracks(fetchedTracks);
+      }
+    };
+
+    loadData();
+
+    // 2. Realtime Subscriptions
+    const unsubZones = supabaseService.subscribeToAudioZones((freshZones) => {
+      if (isMounted) setZones(freshZones);
+    });
+
+    const unsubOverrides = supabaseService.subscribeToLiveOverrides((override) => {
+      if (!isMounted) return;
+      if (override.command === 'EMERGENCY_MUTE') {
+        setIsEmergencyMuted(true);
+      } else if (override.command === 'RESUME') {
+        setIsEmergencyMuted(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubZones();
+      unsubOverrides();
+    };
+  }, []);
+
+  // Handlers wired to live Supabase mutations
+  const handleToggleEmergencyMute = async () => {
+    const nextState = !isEmergencyMuted;
+    setIsEmergencyMuted(nextState);
+    await supabaseService.setEmergencyMute(nextState);
   };
 
-  const handleToggleSchedule = (id: string) => {
+  const handleMasterVolumeChange = async (vol: number) => {
+    setMasterVolume(vol);
+    await supabaseService.updateMasterVolume(vol);
+  };
+
+  const handleToggleSchedule = async (id: string) => {
+    const sched = schedules.find((s) => s.id === id);
+    if (!sched) return;
+    const nextEnabled = !sched.is_enabled;
     setSchedules((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, is_enabled: !s.is_enabled } : s))
+      prev.map((s) => (s.id === id ? { ...s, is_enabled: nextEnabled } : s))
     );
+    await supabaseService.toggleBellSchedule(id, nextEnabled);
   };
 
-  const handleAddSchedule = (newSched: Omit<BellSchedule, 'id'>) => {
-    const id = `sched-${Date.now()}`;
-    setSchedules((prev) => [...prev, { ...newSched, id }]);
+  const handleAddSchedule = async (newSched: Omit<BellSchedule, 'id'>) => {
+    const tempId = `sched-${Date.now()}`;
+    setSchedules((prev) => [...prev, { ...newSched, id: tempId }]);
+    await supabaseService.createBellSchedule(newSched);
+    const fresh = await supabaseService.fetchBellSchedules();
+    setSchedules(fresh);
   };
 
-  const handleDeleteSchedule = (id: string) => {
+  const handleDeleteSchedule = async (id: string) => {
     setSchedules((prev) => prev.filter((s) => s.id !== id));
+    await supabaseService.deleteBellSchedule(id);
   };
 
-  const handleToggleTrack = (id: string) => {
+  const handleToggleTrack = async (id: string) => {
+    const track = tracks.find((t) => t.id === id);
+    if (!track) return;
+    const nextActive = !track.is_active;
     setTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, is_active: !t.is_active } : t))
+      prev.map((t) => (t.id === id ? { ...t, is_active: nextActive } : t))
     );
+    await supabaseService.toggleIntermissionTrack(id, nextActive);
   };
 
   const handleMoveTrack = (id: string, direction: 'up' | 'down') => {
@@ -60,16 +121,24 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleUpdateZoneVolume = (zoneId: string, volume: number) => {
+  const handleUpdateZoneVolume = async (zoneId: string, volume: number) => {
     setZones((prev) =>
       prev.map((z) => (z.id === zoneId ? { ...z, volume } : z))
     );
+    const targetZone = zones.find((z) => z.id === zoneId);
+    if (targetZone) {
+      await supabaseService.updateZoneVolume(targetZone.zone_code, volume);
+    }
   };
 
-  const handleToggleZoneMute = (zoneId: string) => {
+  const handleToggleZoneMute = async (zoneId: string) => {
+    const targetZone = zones.find((z) => z.id === zoneId);
+    if (!targetZone) return;
+    const nextMuted = !targetZone.is_muted;
     setZones((prev) =>
-      prev.map((z) => (z.id === zoneId ? { ...z, is_muted: !z.is_muted } : z))
+      prev.map((z) => (z.id === zoneId ? { ...z, is_muted: nextMuted } : z))
     );
+    await supabaseService.toggleZoneMute(targetZone.zone_code, nextMuted);
   };
 
   return (
@@ -86,7 +155,7 @@ export const App: React.FC = () => {
         {/* Top Header */}
         <Header
           masterVolume={masterVolume}
-          onMasterVolumeChange={setMasterVolume}
+          onMasterVolumeChange={handleMasterVolumeChange}
           onEmergencyMute={handleToggleEmergencyMute}
           isEmergencyMuted={isEmergencyMuted}
         />

@@ -114,11 +114,26 @@ class RemoteController extends ChangeNotifier {
     _masterVolume = volume;
     notifyListeners();
 
+    // 1. Send live override event
     await _supabaseService.sendOverride(
       command: 'PING_TEST',
       targetZone: _selectedZone,
       payload: {'action': 'SET_VOLUME', 'volume': volume.toInt()},
     );
+
+    // 2. Update audio_zones table directly
+    final client = _supabaseService.client;
+    if (client != null) {
+      try {
+        if (_selectedZone == 'ALL') {
+          await client.from('audio_zones').update({'volume': volume.toInt()}).neq('id', '00000000-0000-0000-0000-000000000000');
+        } else {
+          await client.from('audio_zones').update({'volume': volume.toInt()}).eq('zone_code', _selectedZone);
+        }
+      } catch (e) {
+        debugPrint("⚠️ [RemoteController] Could not update audio_zones volume: $e");
+      }
+    }
   }
 
   /// Trigger instant bell (Entry: 20s, Exit: 15s, Warning: 10s)
@@ -177,11 +192,22 @@ class RemoteController extends ChangeNotifier {
     }
     notifyListeners();
 
+    // 1. Send live override event
     await _supabaseService.sendOverride(
       command: newMuteState ? 'EMERGENCY_MUTE' : 'RESUME',
       targetZone: 'ALL',
       payload: {'timestamp': DateTime.now().toIso8601String()},
     );
+
+    // 2. Update is_muted in audio_zones table
+    final client = _supabaseService.client;
+    if (client != null) {
+      try {
+        await client.from('audio_zones').update({'is_muted': newMuteState}).neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) {
+        debugPrint("⚠️ [RemoteController] Could not update audio_zones mute state: $e");
+      }
+    }
   }
 
   /// Start live microphone broadcast to school amplifier

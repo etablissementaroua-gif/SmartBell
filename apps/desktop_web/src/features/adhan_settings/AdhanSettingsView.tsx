@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initialAdhanConfig } from '../../core/mockData';
+import { supabaseService } from '../../core/supabaseService';
 
 export const AdhanSettingsView: React.FC = () => {
   const [config, setConfig] = useState(initialAdhanConfig);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isTesting, setIsTesting] = useState<boolean>(false);
+
+  useEffect(() => {
+    supabaseService.fetchAdhanSettings().then((liveConfig) => {
+      setConfig(liveConfig);
+    });
+  }, []);
 
   const prayerTimesToday = [
     { name: 'الفجر', time: '05:38 ص', status: 'منقضي' },
@@ -15,14 +22,19 @@ export const AdhanSettingsView: React.FC = () => {
     { name: 'العشاء', time: '07:32 م', status: 'مجدول' },
   ];
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    await supabaseService.saveAdhanSettings(config);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleTestAdhan = () => {
+  const handleTestAdhan = async () => {
     setIsTesting(true);
+    await supabaseService.triggerInstantOverride('PERIOD_END', 'ALL', {
+      action: 'TEST_ADHAN',
+      duration_seconds: 15,
+    });
     setTimeout(() => setIsTesting(false), 3000);
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IntermissionTrack } from '../../../types';
+import { supabaseService } from '../../../core/supabaseService';
 
 interface NowPlayingCardProps {
   tracks: IntermissionTrack[];
@@ -124,7 +125,11 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </button>
           <button
             type="button"
-            onClick={() => setCurrentTrackIndex((prev) => Math.max(0, prev - 1))}
+            onClick={() => {
+              const prevIdx = Math.max(0, currentTrackIndex - 1);
+              setCurrentTrackIndex(prevIdx);
+              supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
+            }}
             className="text-on-surface hover:text-teal-dark transition-colors p-1"
             title="المقطع السابق"
           >
@@ -132,7 +137,11 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </button>
           <button
             type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={() => {
+              const nextPlaying = !isPlaying;
+              setIsPlaying(nextPlaying);
+              supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', tracks[currentTrackIndex]);
+            }}
             className="w-12 h-12 rounded-full bg-teal-dark text-on-primary flex items-center justify-center hover:bg-secondary transition-all shadow-md active:scale-95 ring-4 ring-teal-dark/20"
             title={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
           >
@@ -142,7 +151,11 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </button>
           <button
             type="button"
-            onClick={() => setCurrentTrackIndex((prev) => Math.min(tracks.length - 1, prev + 1))}
+            onClick={() => {
+              const nextIdx = Math.min(tracks.length - 1, currentTrackIndex + 1);
+              setCurrentTrackIndex(nextIdx);
+              supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
+            }}
             className="text-on-surface hover:text-teal-dark transition-colors p-1"
             title="المقطع التالي"
           >
@@ -161,7 +174,11 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         <div className="flex items-center justify-between gap-space-md pt-space-sm border-t border-surface-container bg-surface-container-low p-space-md rounded-xl">
           <button
             type="button"
-            onClick={() => setIsYardMuted(!isYardMuted)}
+            onClick={() => {
+              const nextMuted = !isYardMuted;
+              setIsYardMuted(nextMuted);
+              supabaseService.toggleZoneMute('ZONE_A', nextMuted);
+            }}
             className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
               isYardMuted
                 ? 'bg-error text-on-error'

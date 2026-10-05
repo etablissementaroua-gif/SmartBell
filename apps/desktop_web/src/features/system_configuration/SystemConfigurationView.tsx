@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AudioZone } from '../../types';
+import { supabaseService } from '../../core/supabaseService';
 
 interface SystemConfigurationViewProps {
   zones: AudioZone[];
@@ -19,20 +20,26 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [testingChime, setTestingChime] = useState<string | null>(null);
 
-  const handlePingTest = () => {
+  const handlePingTest = async () => {
     setIsPingTesting(true);
     setPingSuccess(false);
+    await supabaseService.sendPingTest();
     setTimeout(() => {
       setIsPingTesting(false);
       setPingSuccess(true);
       setTimeout(() => {
         setPingSuccess(false);
       }, 3000);
-    }, 1500);
+    }, 1200);
   };
 
-  const handleTestChime = (chimeKey: string) => {
+  const handleTestChime = async (chimeKey: string) => {
     setTestingChime(chimeKey);
+    await supabaseService.triggerInstantOverride('PERIOD_END', 'ALL', {
+      action: 'TEST_CHIME',
+      chime: chimeKey,
+      duration_seconds: 5,
+    });
     setTimeout(() => {
       setTestingChime(null);
     }, 2500);

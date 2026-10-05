@@ -10,46 +10,43 @@
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
 
 ### 1. النواة السحابية والبيانات (`backend/supabase/migrations/`)
-- تم تفعيل ملحق `uuid-ossp` وبناء المخطط الكامل: `20261005000000_smartbell_schema.sql`.
-- الجداول الأساسية: `bell_presets`, `bell_schedules`, `intermission_tracks`, `adhan_settings`, `audio_zones`, `live_overrides`, `system_logs`.
-- تفعيل اشتراكات `supabase_realtime` للاستماع الفوري للأوامر الصوتية وحالات الطوارئ.
-- إدخال بيانات التأسيس (Seed Data) المطابقة للجدول المدرسي وإحداثيات مراكش الفلكية.
+- تم بناء المخطط الكامل: `20261005000000_smartbell_schema.sql`.
+- **سكريبت تصفير البيانات وتجهيز الإنتاج الرسمي:** `cleanup_and_production_prep.sql`.
+  - تصفير السجلات التجريبية في `live_overrides`, `system_logs`, `intermission_tracks`, `bell_schedules`.
+  - الحفاظ التام على أمان وسياسات RLS ومناطق الصوت الأربعة وإعدادات مواقيت الأذان لمراكش.
+  - إدخال جدول الحصص الرسمي وباقة الفقرات الإذاعية وتوثيق إطلاق الإنتاج في سجل التدقيق.
 
-### 2. لوحة التحكم المكتبية (`apps/desktop_web/`)
-- مبنية بواسطة **React 18 + TypeScript + Vite + Tailwind CSS** بدعم كامل للـ **RTL** وخط **Cairo**.
-- **Header:** ساعة رقمية دقيقة، مؤشر نبض عتاد `smartbell-daemon`، وتحكم مستوى الصوت Master، وزر كتم الطوارئ.
-- **Sidebar:** ملاحة تفاعلية تضم التبويبات الـ 7 وشارة الإصدار `V2.4`.
-- **Live Control Dashboard:**
-  - `NowPlayingCard`: محاكي موجات صوتية Waveform وقائمة المقاطع القادمة.
-  - `OverridesPanel`: زر الطوارئ العام، أجراس التجاوز الفوري (20 ث، 15 ث، 10 ث)، وبث المايك المباشر مع مؤشر VU تفاعلي ومحدد المناطق.
-  - `TimelineCountdown`: عداد تنازلي لحظي للحدث المجدول ومسار تتابعي لليوم الدراسي.
-- **الإعدادات والمناطق:** إدارة 4 مناطق بث مستقلة، مؤشرات حرارة وتشغيل Raspberry Pi 5، ومكتبة الوسائط، وإعدادات مواقيت الأذان.
-- **الإنتاج:** منشورة حياً عبر Firebase Hosting على الرابط: `https://smartbell-9ec8b.web.app`.
+### 2. لوحة التحكم المكتبية (`apps/desktop_web/`) - Production Mode
+- **الربط السحابي والـ Realtime الكامل (`SupabaseService`):**
+  - استبدال كافة البيانات الوهمية والدوال التجريبية بروابط مباشرة بقاعدة بيانات Supabase.
+  - أزرار التجاوز الفوري (أجراس الدخول، الانصراف، التنبيه): إرسال أوامر حقيقية لجدول `live_overrides`.
+  - زر صمت الطوارئ العام: إيقاف شامل لكافة مخارج الصوت لحظياً مع بث الحالة عبر Realtime.
+  - مزالق الصوت وكتم المناطق: تحديث حقول `volume` و `is_muted` في جدول `audio_zones` فورياً.
+  - مشغل الوسائط الإذاعي: بث أوامر التشغيل والتخطي والإيقاف عبر قنوات البث الحية.
+  - إدارة الجداول والاستراحات والأذان والسجلات: ربط كامل لعمليات الإضافة والتعديل والحذف والحفظ الفعلي.
+- **الإنتاج:** بناء حزمة الإنتاج ونشرها حياً بنجاح على Firebase Hosting:
+  👉 **[https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app)**.
 
-### 3. المشغل والعتاد المحلي (`apps/hardware_client/`)
-- بايثون 3.11+ مدمج مع `BackgroundScheduler` (APScheduler) للعمل بدقة الثواني محلياً.
-- قدرة العمل بدون إنترنت (Offline-First) بنسبة 100% عبر مزامنة محلية (SQLite Fallback).
-- `audio_engine.py`: معالج الأولويات الصوتية (طوارئ > أذان > أجراس > موسيقى استراحة).
-- `prayer_times.py`: حساب مواقيت الأذان وفق تقويم وزارة الأوقاف المغربية (إحداثيات مراكش).
-- `smartbell-daemon.service`: خدمة تشغيل وإقلاع تلقائي (Systemd).
+### 3. المشغل والعتاد المحلي (`apps/hardware_client/`) - Production Mode
+- بايثون 3.11+ مدمج مع `BackgroundScheduler` (APScheduler) مع قدرة Offline-First بنسبة 100%.
+- **مزامنة المواعيد السحابية:** استعلام جدول `bell_schedules` في Supabase عند الإقلاع وتحديث كاش SQLite المحلي تلقائياً.
+- **تنفيذ الأوامر اللحظية وتوثيقها:**
+  - استلام أوامر `INSTANT_ENTRY`, `INSTANT_EXIT`, `PERIOD_END`, `EMERGENCY_MUTE`, `RESUME`, `MIC_BROADCAST`, `PING_TEST` فورياً.
+  - تحديث حقل `is_executed = true` في `live_overrides` فور إطلاق الصوت.
+  - تسجيل أحداث التنفيذ الفعلية في جدول `system_logs` لتوفير سجل تدقيق موثوق (Audit Trail).
 
 ### 4. تطبيق الهاتف المحمول (`apps/mobile_app/`) - SmartBell Controller (v2.4.0)
 - **معمارية Feature-First (CCP):** هيكلية معزولة تدمج الـ Controller والـ Services والـ Views ضمن `features/live_override/`.
 - **طبقة التحكم والربط اللحظي (`RemoteController`):**
-  - ربط كامل مع جدول `live_overrides` في Supabase عبر قنوات الاستماع اللحظي (Realtime Channel).
-  - إرسال أوامر التجاوز الفوري: جرس الدخول (`INSTANT_ENTRY` 20 ثانية)، جرس الانصراف (`INSTANT_EXIT` 15 ثانية)، وتنبيه نهاية الحصة (`PERIOD_END` 10 ثوانٍ) مع مؤشر عد تنازلي تفاعلي.
+  - ربط كامل مع جدول `live_overrides` وتحديث مباشر لحقول `volume` و `is_muted` في جدول `audio_zones`.
+  - إرسال أوامر التجاوز الفوري: جرس الدخول (20 ثانية)، جرس الانصراف (15 ثانية)، وتنبيه نهاية الحصة (10 ثوانٍ).
   - صمت الطوارئ الفوري (`EMERGENCY_MUTE` / `RESUME`) مع استجابة بصرية مهدئة وتحذيرية.
-  - محدد مناطق البث الصوتي المدرسية: الساحة العامة (`ZONE_A`)، الممرات والمطعم (`ZONE_B`)، الإدارة (`ZONE_C`)، المصلى (`ZONE_D`)، أو الجميع (`ALL`).
-  - مزلاق التحكم بمستوى صوت المضخم العام (Master Volume 0% - 100%) مع أزرار اختصار سريعة.
+  - محدد مناطق البث الصوتي المدرسية: الساحة العامة (`ZONE_A`)، الممرات (`ZONE_B`)، الإدارة (`ZONE_C`)، المصلى (`ZONE_D`)، أو الجميع (`ALL`).
+  - مزلاق التحكم بمستوى صوت المضخم العام (Master Volume 0% - 100%).
 - **ميزة الميكروفون المباشر (`AudioBroadcastService`):**
-  - دعم زر الضغط والتحدث (Push-to-Talk) ومفتاح التبديل للبث المستمر.
-  - إدارة أذونات الميكروفون (`permission_handler`) وتدفق الصوت عالي السرعة (`record`).
-  - إرسال إشارات الفتح والإغلاق `MIC_BROADCAST` للعتاد تلقائياً.
-- **حالة العتاد المركزي (Hardware Status Banner):**
-  - شارة علوية بنبض تفاعلي حي توضح اتصال وحدة `smartbell-daemon` على Raspberry Pi.
-- **جاهزية حزمة الأندرويد والـ APK:**
-  - تهيئة `AndroidManifest.xml` بكافة أذونات الصوت (`RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, `INTERNET`, `WAKE_LOCK`).
-  - ضبط ملفات `settings.gradle`, `build.gradle`, و `app/build.gradle` و `pubspec.yaml` لتوليد الـ APK عبر `flutter build apk --release`.
+  - زر الضغط والتحدث (Push-to-Talk) ومفتاح التبديل للبث المستمر وتدفق الصوت عبر `record`.
+- **حالة العتاد المركزي (Hardware Status Banner):** شارة علوية بنبض حي توضح اتصال وحدة `smartbell-daemon`.
+- **جاهزية حزمة الأندرويد والـ APK:** تهيئة `AndroidManifest.xml` وملفات Gradle لبناء الـ APK عبر `flutter build apk --release`.
 
 ---
 
@@ -57,4 +54,7 @@
 - [x] تشغيل اختبارات التكامل (Smoke & Integration Tests) لمحاكاة انقطاع الإنترنت.
 - [x] تفعيل مسار النشر التلقائي عبر GitHub Actions للواجهة والنسخ الاحتياطي لقاعدة البيانات.
 - [x] بناء وتجهيز تطبيق الهاتف SmartBell Controller (Controller, Service, UI, Android Scaffolding).
+- [x] تنظيف قاعدة البيانات وتجهيز بيئة الإنتاج التشغيلية الحقيقية (cleanup_and_production_prep.sql).
+- [x] ربط وتفعيل كافة أزرار لوحة الويب وتطبيق الهاتف مع Supabase Realtime ونشرها على Firebase Hosting.
+- [x] تحديث خدمة العتاد smartbell-daemon لمزامنة المواعيد السحابية وتحديث حالة التنفيذ في السجلات.
 - [ ] إجراء تجربة ميدانية لمكبرات الصوت في الساحة المدرسية مع وحدة Raspberry Pi 5.

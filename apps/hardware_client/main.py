@@ -34,7 +34,18 @@ class SmartBellDaemon:
         self.audio = AudioEngine()
         self.scheduler = BackgroundScheduler()
         self.prayer_calc = PrayerTimesCalculator()
+        self.supabase_client = None
+        self.init_supabase()
         self.init_local_db()
+
+    def init_supabase(self):
+        """Initializes client connection to Supabase if available."""
+        try:
+            from supabase import create_client
+            self.supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+            logger.info("Supabase client initialized successfully.")
+        except Exception as e:
+            logger.warning(f"Could not initialize Supabase client ({e}). Offline fallback engaged.")
 
     def init_local_db(self):
         """Initializes local SQLite database for 100% offline caching."""
@@ -67,8 +78,40 @@ class SmartBellDaemon:
             conn.commit()
         conn.close()
 
+    def sync_schedules_from_cloud(self):
+        """Fetches active schedules from Supabase and syncs to local SQLite cache."""
+        if not self.supabase_client:
+            return
+
+        try:
+            res = self.supabase_client.from('bell_schedules').select('*').eq('is_enabled', True).execute()
+            if res.data and len(res.data) > 0:
+                conn = sqlite3.connect(LOCAL_DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM local_schedules")
+                records = [
+                    (
+                        item['id'],
+                        item['bell_time'],
+                        item['bell_type'],
+                        item['label'],
+                        item.get('duration_seconds', 10),
+                        str(item.get('target_zones', 'ALL')),
+                        1
+                    )
+                    for item in res.data
+                ]
+                cursor.executemany("INSERT INTO local_schedules VALUES (?, ?, ?, ?, ?, ?, ?)", records)
+                conn.commit()
+                conn.close()
+                logger.info(f"✅ Synced {len(records)} schedules from Supabase into local SQLite cache.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not sync schedules from Supabase ({e}). Operating from offline cache.")
+
     def load_and_schedule_bells(self):
         """Loads all enabled bell schedules from local cache into APScheduler."""
+        self.sync_schedules_from_cloud()
+
         conn = sqlite3.connect(LOCAL_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT id, bell_time, bell_type, label, duration_seconds, target_zones FROM local_schedules WHERE is_enabled = 1")
@@ -102,6 +145,7 @@ class SmartBellDaemon:
         command = event.get('command')
         target_zone = event.get('target_zone', 'ALL')
         initiator = event.get('initiator', 'المشرف الإذاعي')
+        event_id = event.get('id')
 
         logger.info(f"⚡ [REALTIME OVERRIDE] Command: {command} from {initiator} on zone {target_zone}")
 
@@ -131,13 +175,30 @@ class SmartBellDaemon:
                 new_vol = float(payload_data.get('volume', 75)) / 100.0
                 self.audio.master_volume = new_vol
                 logger.info(f"🔊 [VOLUME] Amplifier master volume adjusted to {int(new_vol * 100)}%")
+            else:
+                logger.info(f"🏓 [PING_TEST] Hardware ping received from {initiator} - Daemon is responsive.")
+
+        # Update execution status in Supabase if client is active
+        if event_id and self.supabase_client:
+            try:
+                self.supabase_client.from('live_overrides').update({'is_executed': True}).eq('id', event_id).execute()
+                self.supabase_client.from('system_logs').insert({
+                    'event_type': f'EXEC_{command}',
+                    'description': f'تم تنفيذ أمر {command} بنجاح على عتاد المدرسة في منطقة {target_zone}',
+                    'zone': target_zone,
+                    'severity': 'INFO' if command != 'EMERGENCY_MUTE' else 'CRITICAL'
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Could not report execution status to Supabase: {e}")
 
     def start_realtime_listener(self):
         """Connects to Supabase Realtime channel if credentials exist."""
+        if not self.supabase_client:
+            logger.warning("Supabase client not active. Daemon running in offline standalone mode.")
+            return
+
         try:
-            from supabase import create_client
-            client = create_client(SUPABASE_URL, SUPABASE_KEY)
-            client.channel('public:live_overrides') \
+            self.supabase_client.channel('public:live_overrides') \
                 .on_postgres_changes(event='INSERT', schema='public', table='live_overrides', callback=self.handle_realtime_override) \
                 .subscribe()
             logger.info("Connected to Supabase Realtime channel 'public:live_overrides'.")
@@ -145,7 +206,7 @@ class SmartBellDaemon:
             logger.warning(f"Could not connect to Supabase Realtime ({e}). Running in offline standalone mode.")
 
     def run(self):
-        logger.info("Starting SmartBell Daemon v2.4...")
+        logger.info("Starting SmartBell Daemon v2.4 (Production Mode)...")
         self.load_and_schedule_bells()
         self.scheduler.start()
         self.start_realtime_listener()

@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initialLogs } from '../../core/mockData';
+import { supabaseService } from '../../core/supabaseService';
+import { SystemAuditLog } from '../../types';
 
 export const SystemAuditLogsView: React.FC = () => {
-  const [logs] = useState(initialLogs);
+  const [logs, setLogs] = useState<SystemAuditLog[]>(initialLogs);
   const [filter, setFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    supabaseService.fetchSystemLogs().then((liveLogs) => {
+      setLogs(liveLogs);
+    });
+  }, []);
 
   const filteredLogs = logs.filter((log) => {
     if (filter === 'ALL') return true;
