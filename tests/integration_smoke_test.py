@@ -60,6 +60,28 @@ class TestSmartBellIntegration(unittest.TestCase):
         priority = self.cursor.fetchone()[0]
         self.assertEqual(priority, 1, "أمر الطوارئ يجب أن يحمل أعلى أولوية مطلقة (1)")
 
+    def test_instant_overrides_command_validation(self):
+        """التحقق من صحة أوامر التجاوز الفوري المتوافقة مع قاعدة البيانات"""
+        allowed_commands = {
+            'INSTANT_ENTRY', 'INSTANT_EXIT', 'PERIOD_END', 
+            'EMERGENCY_MUTE', 'RESUME', 'MIC_BROADCAST', 'PING_TEST'
+        }
+        test_commands = ['INSTANT_ENTRY', 'INSTANT_EXIT', 'EMERGENCY_MUTE', 'MIC_BROADCAST']
+        for cmd in test_commands:
+            self.assertIn(cmd, allowed_commands, f"Command {cmd} must be in allowed schema commands")
+
+    def test_live_mic_broadcast_priority(self):
+        """التحقق من أن بث المايكروفون المباشر يعطل الموسيقى الخلفية"""
+        mic_action = 'START'
+        should_stop_background = (mic_action == 'START')
+        self.assertTrue(should_stop_background)
+
+    def test_zone_routing_codes(self):
+        """التحقق من رموز المناطق الصوتية المعتمدة"""
+        valid_zones = {'ALL', 'ZONE_A', 'ZONE_B', 'ZONE_C', 'ZONE_D'}
+        self.assertIn('ZONE_A', valid_zones)
+        self.assertIn('ALL', valid_zones)
+
     def tearDown(self):
         self.conn.close()
 

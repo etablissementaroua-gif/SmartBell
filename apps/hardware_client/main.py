@@ -118,6 +118,19 @@ class SmartBellDaemon:
         elif command == 'PERIOD_END':
             sound_file = os.path.join(SOUNDS_DIR, "warning_bell.mp3")
             self.audio.play_sound(sound_file, priority=AudioPriority.BELL, duration=10, zone=target_zone)
+        elif command == 'MIC_BROADCAST':
+            action = payload.get('new', {}).get('payload', {}).get('action', 'START')
+            if action == 'START':
+                logger.info(f"🎙️ [LIVE MIC] Live microphone stream opened to amplifier zone: {target_zone}")
+                self.audio.stop_all()
+            else:
+                logger.info(f"🛑 [LIVE MIC] Live microphone stream closed on zone: {target_zone}")
+        elif command == 'PING_TEST':
+            payload_data = payload.get('new', {}).get('payload', {})
+            if payload_data.get('action') == 'SET_VOLUME':
+                new_vol = float(payload_data.get('volume', 75)) / 100.0
+                self.audio.master_volume = new_vol
+                logger.info(f"🔊 [VOLUME] Amplifier master volume adjusted to {int(new_vol * 100)}%")
 
     def start_realtime_listener(self):
         """Connects to Supabase Realtime channel if credentials exist."""

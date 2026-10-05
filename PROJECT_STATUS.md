@@ -33,12 +33,28 @@
 - `prayer_times.py`: حساب مواقيت الأذان وفق تقويم وزارة الأوقاف المغربية (إحداثيات مراكش).
 - `smartbell-daemon.service`: خدمة تشغيل وإقلاع تلقائي (Systemd).
 
-### 4. تطبيق الهاتف المحمول (`apps/mobile_app/`)
-- واجهات فلاتر متوافقة مع هوية SmartBell (`LoginScreen`, `RemoteControllerScreen`, `AppTheme`).
+### 4. تطبيق الهاتف المحمول (`apps/mobile_app/`) - SmartBell Controller (v2.4.0)
+- **معمارية Feature-First (CCP):** هيكلية معزولة تدمج الـ Controller والـ Services والـ Views ضمن `features/live_override/`.
+- **طبقة التحكم والربط اللحظي (`RemoteController`):**
+  - ربط كامل مع جدول `live_overrides` في Supabase عبر قنوات الاستماع اللحظي (Realtime Channel).
+  - إرسال أوامر التجاوز الفوري: جرس الدخول (`INSTANT_ENTRY` 20 ثانية)، جرس الانصراف (`INSTANT_EXIT` 15 ثانية)، وتنبيه نهاية الحصة (`PERIOD_END` 10 ثوانٍ) مع مؤشر عد تنازلي تفاعلي.
+  - صمت الطوارئ الفوري (`EMERGENCY_MUTE` / `RESUME`) مع استجابة بصرية مهدئة وتحذيرية.
+  - محدد مناطق البث الصوتي المدرسية: الساحة العامة (`ZONE_A`)، الممرات والمطعم (`ZONE_B`)، الإدارة (`ZONE_C`)، المصلى (`ZONE_D`)، أو الجميع (`ALL`).
+  - مزلاق التحكم بمستوى صوت المضخم العام (Master Volume 0% - 100%) مع أزرار اختصار سريعة.
+- **ميزة الميكروفون المباشر (`AudioBroadcastService`):**
+  - دعم زر الضغط والتحدث (Push-to-Talk) ومفتاح التبديل للبث المستمر.
+  - إدارة أذونات الميكروفون (`permission_handler`) وتدفق الصوت عالي السرعة (`record`).
+  - إرسال إشارات الفتح والإغلاق `MIC_BROADCAST` للعتاد تلقائياً.
+- **حالة العتاد المركزي (Hardware Status Banner):**
+  - شارة علوية بنبض تفاعلي حي توضح اتصال وحدة `smartbell-daemon` على Raspberry Pi.
+- **جاهزية حزمة الأندرويد والـ APK:**
+  - تهيئة `AndroidManifest.xml` بكافة أذونات الصوت (`RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, `INTERNET`, `WAKE_LOCK`).
+  - ضبط ملفات `settings.gradle`, `build.gradle`, و `app/build.gradle` و `pubspec.yaml` لتوليد الـ APK عبر `flutter build apk --release`.
 
 ---
 
 ## 🚦 المهام الحالية والقادمة (Backlog & Next Steps)
 - [x] تشغيل اختبارات التكامل (Smoke & Integration Tests) لمحاكاة انقطاع الإنترنت.
 - [x] تفعيل مسار النشر التلقائي عبر GitHub Actions للواجهة والنسخ الاحتياطي لقاعدة البيانات.
-- [ ] فحص سجلات أخطاء البناء في Gradle المحتملة على بيئة الهاتف.
+- [x] بناء وتجهيز تطبيق الهاتف SmartBell Controller (Controller, Service, UI, Android Scaffolding).
+- [ ] إجراء تجربة ميدانية لمكبرات الصوت في الساحة المدرسية مع وحدة Raspberry Pi 5.

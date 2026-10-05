@@ -5,6 +5,8 @@ apps/mobile_app/.flutter-plugins-dependencies
 apps/mobile_app/.packages
 apps/mobile_app/build/
 apps/mobile_app/.pub/
+.gradle/
+**/android/.gradle/
 
 # Python & Hardware Client
 __pycache__/
@@ -25,3 +27,4 @@ apps/desktop_web/.firebase/
 apps/desktop_web/deploy_log.txt
 .DS_Store
 *.log
+.github/
