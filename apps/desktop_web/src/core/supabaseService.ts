@@ -9,8 +9,7 @@ import {
 } from '../types';
 import { 
   initialAudioZones, 
-  initialAdhanConfig, 
-  initialLogs 
+  initialAdhanConfig 
 } from './mockData';
 
 const formatSeconds = (sec: number): string => {
@@ -169,7 +168,7 @@ export class SupabaseService {
 
   // 5. Fetch System Logs
   public async fetchSystemLogs(): Promise<SystemAuditLog[]> {
-    if (!isSupabaseConfigured()) return initialLogs;
+    if (!isSupabaseConfigured()) return [];
 
     try {
       const { data, error } = await supabase
@@ -179,7 +178,7 @@ export class SupabaseService {
         .limit(50);
 
       if (error || !data || data.length === 0) {
-        return initialLogs;
+        return [];
       }
 
       return data.map((l) => ({
@@ -196,11 +195,31 @@ export class SupabaseService {
       }));
     } catch (err) {
       console.error('❌ [SupabaseService] Error fetching system logs:', err);
-      return initialLogs;
+      return [];
     }
   }
 
   // 6. Realtime Subscriptions
+  public subscribeToSystemLogs(onChange: (logs: SystemAuditLog[]) => void) {
+    if (!isSupabaseConfigured()) return () => {};
+
+    const channel = supabase
+      .channel('public:system_logs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'system_logs' },
+        async () => {
+          const fresh = await this.fetchSystemLogs();
+          onChange(fresh);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }
+
   public subscribeToAudioZones(onChange: (zones: AudioZone[]) => void) {
     if (!isSupabaseConfigured()) return () => {};
 

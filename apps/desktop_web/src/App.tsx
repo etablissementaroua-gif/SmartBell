@@ -209,8 +209,10 @@ export const App: React.FC = () => {
           {(currentTab === 'system-configuration' || currentTab === 'media-library') && (
             <SystemConfigurationView
               zones={zones}
+              tracks={tracks}
               onUpdateZoneVolume={handleUpdateZoneVolume}
               onToggleZoneMute={handleToggleZoneMute}
+              onDeleteTrack={handleDeleteTrack}
             />
           )}
 

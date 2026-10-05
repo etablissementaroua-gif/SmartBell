@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { initialLogs } from '../../core/mockData';
 import { supabaseService } from '../../core/supabaseService';
 import { SystemAuditLog } from '../../types';
 
 export const SystemAuditLogsView: React.FC = () => {
-  const [logs, setLogs] = useState<SystemAuditLog[]>(initialLogs);
+  const [logs, setLogs] = useState<SystemAuditLog[]>([]);
   const [filter, setFilter] = useState<string>('ALL');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // 1. Initial direct load from Supabase system_logs
     supabaseService.fetchSystemLogs().then((liveLogs) => {
       setLogs(liveLogs);
+      setIsLoading(false);
     });
+
+    // 2. Realtime listener for incoming system logs
+    const unsubscribe = supabaseService.subscribeToSystemLogs((liveLogs) => {
+      setLogs(liveLogs);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const filteredLogs = logs.filter((log) => {
@@ -19,6 +30,27 @@ export const SystemAuditLogsView: React.FC = () => {
     if (filter === 'SYSTEM') return log.event_type.includes('نظام') || log.event_type.includes('NTP');
     return true;
   });
+
+  const handleExportCSV = () => {
+    if (logs.length === 0) return;
+    const headers = ['الوقت', 'نوع الحدث', 'تفاصيل العملية', 'المنطقة', 'الأهمية'];
+    const rows = logs.map((l) => [
+      `"${l.created_at}"`,
+      `"${l.event_type}"`,
+      `"${l.description.replace(/"/g, '""')}"`,
+      `"${l.zone}"`,
+      `"${l.severity}"`,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `smartbell_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="flex flex-col gap-space-xl w-full max-w-[1720px] mx-auto pb-12">
@@ -43,7 +75,9 @@ export const SystemAuditLogsView: React.FC = () => {
 
         <button
           type="button"
-          className="flex items-center gap-2 px-space-lg py-space-sm bg-surface-container hover:bg-surface-container-highest text-on-surface rounded-xl font-bold text-xs transition-colors border border-surface-container-high"
+          onClick={handleExportCSV}
+          disabled={logs.length === 0}
+          className="flex items-center gap-2 px-space-lg py-space-sm bg-surface-container hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed text-on-surface rounded-xl font-bold text-xs transition-colors border border-surface-container-high"
         >
           <span className="material-symbols-outlined text-lg text-teal-dark">download</span>
           <span>تصدير السجل بتنسيق CSV</span>
@@ -81,53 +115,74 @@ export const SystemAuditLogsView: React.FC = () => {
           </span>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-xl bg-surface-container-low border border-surface-container">
-          <table className="w-full text-right border-collapse text-xs">
-            <thead>
-              <tr className="text-on-surface-variant font-bold bg-surface-container">
-                <th className="py-space-sm px-space-md">الوقت</th>
-                <th className="py-space-sm px-space-md">نوع الحدث</th>
-                <th className="py-space-sm px-space-md">تفاصيل العملية</th>
-                <th className="py-space-sm px-space-md">المنطقة المستهدفة</th>
-                <th className="py-space-sm px-space-md text-center">مستوى الأهمية</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-container">
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-surface-container-lowest/60 transition-colors">
-                  <td className="py-space-md px-space-md font-mono font-bold text-on-surface">
-                    {log.created_at}
-                  </td>
-                  <td className="py-space-md px-space-md font-bold text-teal-dark">
-                    {log.event_type}
-                  </td>
-                  <td className="py-space-md px-space-md text-on-surface">
-                    {log.description}
-                  </td>
-                  <td className="py-space-md px-space-md">
-                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface text-[11px] font-medium font-mono">
-                      {log.zone}
-                    </span>
-                  </td>
-                  <td className="py-space-md px-space-md text-center">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
-                        log.severity === 'CRITICAL'
-                          ? 'bg-error-container text-error'
-                          : log.severity === 'WARNING'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-secondary-fixed text-on-secondary-fixed'
-                      }`}
-                    >
-                      {log.severity}
-                    </span>
-                  </td>
+        {/* Content: Loading State, Empty State, or Table */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-container-low rounded-xl border border-surface-container">
+            <span className="material-symbols-outlined text-4xl text-teal-dark animate-spin mb-3">
+              refresh
+            </span>
+            <p className="text-xs text-on-surface-variant font-medium">جاري استرجاع سجل العمليات من خادم السحابة...</p>
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-container-low rounded-xl border border-surface-container">
+            <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-on-surface-variant/60 mb-3">
+              <span className="material-symbols-outlined text-3xl">history_toggle_off</span>
+            </div>
+            <h3 className="font-bold text-base text-on-surface mb-1">
+              لا توجد سجلات عمليات حالياً
+            </h3>
+            <p className="text-xs text-on-surface-variant max-w-md">
+              لا توجد سجلات عمليات حالياً - يبدأ التوثيق التلقائي فور تشغيل النظام
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl bg-surface-container-low border border-surface-container">
+            <table className="w-full text-right border-collapse text-xs">
+              <thead>
+                <tr className="text-on-surface-variant font-bold bg-surface-container">
+                  <th className="py-space-sm px-space-md">الوقت</th>
+                  <th className="py-space-sm px-space-md">نوع الحدث</th>
+                  <th className="py-space-sm px-space-md">تفاصيل العملية</th>
+                  <th className="py-space-sm px-space-md">المنطقة المستهدفة</th>
+                  <th className="py-space-sm px-space-md text-center">مستوى الأهمية</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-surface-container">
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-surface-container-lowest/60 transition-colors">
+                    <td className="py-space-md px-space-md font-mono font-bold text-on-surface">
+                      {log.created_at}
+                    </td>
+                    <td className="py-space-md px-space-md font-bold text-teal-dark">
+                      {log.event_type}
+                    </td>
+                    <td className="py-space-md px-space-md text-on-surface">
+                      {log.description}
+                    </td>
+                    <td className="py-space-md px-space-md">
+                      <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface text-[11px] font-medium font-mono">
+                        {log.zone === 'ALL' ? 'كافة المناطق' : log.zone}
+                      </span>
+                    </td>
+                    <td className="py-space-md px-space-md text-center">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                          log.severity === 'CRITICAL'
+                            ? 'bg-error-container text-error'
+                            : log.severity === 'WARNING'
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-secondary-fixed text-on-secondary-fixed'
+                        }`}
+                      >
+                        {log.severity}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

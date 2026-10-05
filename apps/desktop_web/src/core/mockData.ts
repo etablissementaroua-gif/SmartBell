@@ -65,45 +65,5 @@ export const initialAdhanConfig: AdhanConfig = {
   dua_after_athan: true,
 };
 
-export const initialLogs: SystemAuditLog[] = [
-  {
-    id: 'log-1',
-    event_type: 'إقلاع النظام',
-    description: 'تم بدء خدمة smartbell-daemon.service على بوابة Raspberry Pi 5 بنجاح',
-    zone: 'العتاد المركزي',
-    severity: 'INFO',
-    created_at: '06:30:12 ص',
-  },
-  {
-    id: 'log-2',
-    event_type: 'مزامنة NTP',
-    description: 'تم ضبط التوقيت الموحد محلياً بدقة متناهية عبر خادم NTP ومؤقت DS3231 RTC',
-    zone: 'النظام',
-    severity: 'INFO',
-    created_at: '06:30:15 ص',
-  },
-  {
-    id: 'log-3',
-    event_type: 'جرس مجدول',
-    description: 'تم تشغيل جرس طابور الصباح والنشيد الوطني تلقائياً لمدة 20 ثانية',
-    zone: 'الساحة والملاعب',
-    severity: 'INFO',
-    created_at: '08:00:00 ص',
-  },
-  {
-    id: 'log-4',
-    event_type: 'جرس مجدول',
-    description: 'تم تشغيل جرس بداية الحصة الأولى تلقائياً لكافة الزونات',
-    zone: 'كافة المناطق',
-    severity: 'INFO',
-    created_at: '08:15:00 ص',
-  },
-  {
-    id: 'log-5',
-    event_type: 'بث إذاعي',
-    description: 'بدء بث برنامج الصباح الإذاعي: نفحات تربوية إيمانية',
-    zone: 'الساحة والممرات',
-    severity: 'INFO',
-    created_at: '08:20:00 ص',
-  },
-];
+export const initialLogs: SystemAuditLog[] = [];
+
