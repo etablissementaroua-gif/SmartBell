@@ -19,6 +19,9 @@ apps/hardware_client/*.db
 # Node & Desktop Web
 apps/desktop_web/node_modules/
 apps/desktop_web/dist/
+apps/desktop_web/.env
 apps/desktop_web/.env.local
+apps/desktop_web/.firebase/
+apps/desktop_web/deploy_log.txt
 .DS_Store
 *.log
