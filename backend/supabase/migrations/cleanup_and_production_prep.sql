@@ -10,6 +10,8 @@ truncate table intermission_tracks cascade;
 truncate table bell_schedules cascade;
 
 -- 2. تثبيت وتحديث حالة مناطق توزيع الصوت المدرسية الأربعة على الوضع النشط (ONLINE)
+alter table audio_zones add column if not exists updated_at timestamptz default now();
+
 insert into audio_zones (zone_code, name, description, speaker_count, status, volume, is_muted, allow_morning_broadcast, ip_network)
 values
   ('ZONE_A', 'ساحة المدرسة والملاعب الخارجية', '8 مكبرات صوت IP نشطة مع عزل الصدى المفتوح', 8, 'ONLINE', 85, false, true, 'VLAN 20 (192.168.20.10-18)'),

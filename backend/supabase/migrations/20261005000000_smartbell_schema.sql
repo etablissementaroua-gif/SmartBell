@@ -70,6 +70,7 @@ create table if not exists audio_zones (
     is_muted boolean default false,
     allow_morning_broadcast boolean default true,
     ip_network text,
+    updated_at timestamptz default now(),
     created_at timestamptz default now()
 );
 
