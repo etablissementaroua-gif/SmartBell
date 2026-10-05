@@ -914,6 +914,119 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           </div>
         </div>
       </section>
+
+      {/* 5. Mobile Controller APK & QR Code Download Section */}
+      <section className="bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-teal-dark/40 relative overflow-hidden flex flex-col gap-space-lg">
+        {/* Glowing Background Accent */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-teal-dark/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md border-b border-surface-container pb-space-md">
+          <div className="flex items-center gap-space-md">
+            <div className="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center text-teal-dark shadow-sm">
+              <span className="material-symbols-outlined text-2xl">phone_android</span>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-space-sm flex-wrap">
+                <h2 className="text-lg md:text-xl font-bold text-on-surface">تطبيق الهاتف الذكي للمشرف (SmartBell Controller)</h2>
+                <span className="px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-xs font-bold font-mono">
+                  v2.4.0 Production
+                </span>
+                <span className="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-bold">
+                  Android APK
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                تثبيت وحدة التحكم المتنقلة على هاتف المشرف للإدارة اللحظية للأجراس وصمت الطوارئ وبث الميكروفون للساحة.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href="/downloads/smartbell-controller.apk"
+            download="smartbell-controller.apk"
+            className="flex items-center justify-center gap-2 px-space-xl py-space-sm bg-teal-dark hover:bg-secondary text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-teal-dark/30 active:scale-95 border border-teal-dark/50"
+          >
+            <span className="material-symbols-outlined text-xl">download</span>
+            <span>تنزيل ملف APK المباشر (18.4 MB)</span>
+          </a>
+        </div>
+
+        {/* Main Content: Info & QR Code Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-lg items-center">
+          {/* Col 1 & 2: App Capabilities & Quick Info */}
+          <div className="lg:col-span-2 flex flex-col gap-space-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+              <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-container text-teal-dark flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg">notification_important</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-on-surface">أجراس التجاوز الفوري</span>
+                  <span className="text-xs text-on-surface-variant">رنين فوري لدخول الطلاب (20 ث) والانصراف (15 ث) والتنبيه بنقرة واحدة.</span>
+                </div>
+              </div>
+
+              <div className="p-space-md rounded-xl bg-surface-container-low border border-error/30 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-error-container text-error flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-error">صمت الطوارئ الشامل</span>
+                  <span className="text-xs text-on-surface-variant">كتم فوري لكافة المكبرات والأجراس المدرسية من أي مكان بالمدرسة.</span>
+                </div>
+              </div>
+
+              <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-secondary-container text-teal-dark flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg">mic</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-on-surface">مايك المشرف (Push-to-Talk)</span>
+                  <span className="text-xs text-on-surface-variant">نقل صوت المشرف المباشر من ميكروفون الهاتف إلى مضخم الساحة فورياً.</span>
+                </div>
+              </div>
+
+              <div className="p-space-md rounded-xl bg-surface-container-low border border-surface-container flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-lg">wifi_tethering</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-on-surface">ربط سحابي ومحلي مستقل</span>
+                  <span className="text-xs text-on-surface-variant">تزامن لحظي عبر Supabase Realtime مع دعم التشغيل دون إنترنت.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Installation Steps */}
+            <div className="p-space-md rounded-xl bg-surface-container-high/40 border border-surface-container flex items-center justify-between gap-4 flex-wrap text-xs text-on-surface-variant">
+              <span className="font-bold text-on-surface">طريقة التثبيت السريع:</span>
+              <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-teal-dark text-white flex items-center justify-center text-[10px] font-bold">1</span> امسح رمز الاستجابة بالكاميرا</span>
+              <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-teal-dark text-white flex items-center justify-center text-[10px] font-bold">2</span> قم بتأكيد تنزيل ملف APK</span>
+              <span className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-teal-dark text-white flex items-center justify-center text-[10px] font-bold">3</span> افتح الملف واضغط "تثبيت"</span>
+            </div>
+          </div>
+
+          {/* Col 3: QR Code Box */}
+          <div className="flex flex-col items-center justify-center p-space-md bg-surface-container-low rounded-2xl border border-teal-dark/30 shadow-sm text-center">
+            <span className="text-xs font-bold text-on-surface mb-2">مسح بالكاميرا للتنزيل المباشر</span>
+            <div className="p-2.5 bg-surface-container-lowest rounded-xl border border-teal-dark/40 shadow-inner">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://smartbell-9ec8b.web.app/downloads/smartbell-controller.apk&bgcolor=0F172A&color=14B8A6"
+                alt="QR Code لتحميل SmartBell Controller APK"
+                className="w-36 h-36 rounded-lg"
+                loading="lazy"
+                onError={(e) => {
+                  // Fallback to svg representation if offline
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            </div>
+            <span className="text-[11px] font-mono text-teal-dark font-bold mt-2">smartbell-controller.apk</span>
+            <span className="text-[10px] text-on-surface-variant mt-0.5">جاهز للتثبيت على كافة أجهزة أندرويد</span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

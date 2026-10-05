@@ -59,6 +59,27 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side: Volume, Emergency Mute, and User Profile */}
       <div className="flex items-center gap-space-lg">
+        {/* Supervisor APK Download Button */}
+        <a
+          href="/downloads/smartbell-controller.apk"
+          download="smartbell-controller.apk"
+          className="group relative flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-teal-dark/50 hover:border-teal-dark shadow-sm hover:shadow-[0_0_15px_rgba(20,184,166,0.35)] transition-all active:scale-95 text-on-surface"
+          title="تثبيت تطبيق SmartBell Controller على هواتف أندرويد"
+        >
+          <span className="material-symbols-outlined text-teal-dark group-hover:animate-bounce text-xl">
+            phone_android
+          </span>
+          <span className="hidden xl:inline text-xs font-bold text-teal-dark group-hover:text-teal-accent transition-colors">
+            تحميل تطبيق المشرف (APK)
+          </span>
+          <span className="xl:hidden inline text-xs font-bold text-teal-dark">
+            APK
+          </span>
+          <span className="material-symbols-outlined text-xs text-on-surface-variant group-hover:text-teal-dark">
+            download
+          </span>
+        </a>
+
         {/* Master Volume Controller */}
         <div className="flex items-center gap-space-sm bg-surface-container-low border border-surface-container px-space-md py-space-xs rounded-xl shadow-sm">
           <span className="material-symbols-outlined text-teal-dark text-lg">

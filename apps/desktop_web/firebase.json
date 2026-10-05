@@ -4,7 +4,15 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.apk"
+    ],
+    "redirects": [
+      {
+        "source": "/downloads/smartbell-controller.apk",
+        "destination": "https://raw.githubusercontent.com/etablissementaroua-gif/SmartBell/main/apps/desktop_web/public/downloads/smartbell-controller.apk",
+        "type": 302
+      }
     ],
     "rewrites": [
       {
