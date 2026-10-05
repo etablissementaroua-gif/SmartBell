@@ -1,0 +1,25 @@
+[Unit]
+Description=SmartBell School Radio and Bell Daemon (بيل سمارت)
+After=network.target sound.target time-sync.target
+Wants=time-sync.target
+
+[Service]
+Type=simple
+User=pi
+Group=audio
+WorkingDirectory=/opt/smartbell
+Environment="SMARTBELL_SUPABASE_URL=https://mnlmilyymnrhkuulcpfw.supabase.co"
+Environment="SMARTBELL_SERVICE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /opt/smartbell/main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardware Resource Limits
+LimitNOFILE=65536
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+# Flutter & Dart
+apps/mobile_app/.dart_tool/
+apps/mobile_app/.flutter-plugins
+apps/mobile_app/.flutter-plugins-dependencies
+apps/mobile_app/.packages
+apps/mobile_app/build/
+apps/mobile_app/.pub/
+
+# Python & Hardware Client
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+apps/hardware_client/*.db
+
+# Node & Desktop Web
+apps/desktop_web/node_modules/
+apps/desktop_web/dist/
+apps/desktop_web/.env.local
+.DS_Store
+*.log

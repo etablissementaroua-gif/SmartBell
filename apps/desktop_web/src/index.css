@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Cairo', sans-serif;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+@keyframes pulse-wave {
+  0%, 100% { height: 15%; }
+  50% { height: 95%; }
+}
+
+.animate-waveform-1 { animation: pulse-wave 1.2s ease-in-out infinite; }
+.animate-waveform-2 { animation: pulse-wave 0.8s ease-in-out infinite 0.15s; }
+.animate-waveform-3 { animation: pulse-wave 1.5s ease-in-out infinite 0.3s; }
+.animate-waveform-4 { animation: pulse-wave 1.0s ease-in-out infinite 0.45s; }
+.animate-waveform-5 { animation: pulse-wave 0.7s ease-in-out infinite 0.2s; }
+.animate-waveform-6 { animation: pulse-wave 1.3s ease-in-out infinite 0.5s; }
+.animate-waveform-7 { animation: pulse-wave 0.9s ease-in-out infinite 0.25s; }
+.animate-waveform-8 { animation: pulse-wave 1.4s ease-in-out infinite 0.4s; }
