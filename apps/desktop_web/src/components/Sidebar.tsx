@@ -13,9 +13,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, onLog
     { id: 'bell-schedules', label: 'جدول الأجراس', icon: 'notifications_active' },
     { id: 'break-programming', label: 'برمجة الاستراحات', icon: 'timer' },
     { id: 'athan-settings', label: 'إعدادات الأذان', icon: 'mosque' },
-    { id: 'media-library', label: 'مكتبة الوسائط', icon: 'library_music' },
+    { id: 'media-library', label: 'مكتبة الوسائط وتطبيق المشرف', icon: 'library_music' },
     { id: 'system-audit-logs', label: 'سجل العمليات', icon: 'receipt_long' },
-    { id: 'system-configuration', label: 'إعدادات النظام', icon: 'settings_suggest' },
   ];
 
   return (

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TabType, BellSchedule, IntermissionTrack, AudioZone } from './types';
-import { initialAudioZones } from './core/mockData';
+import { TabType, BellSchedule, IntermissionTrack } from './types';
 import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -18,7 +17,6 @@ export const App: React.FC = () => {
   const [isEmergencyMuted, setIsEmergencyMuted] = useState<boolean>(false);
   const [schedules, setSchedules] = useState<BellSchedule[]>([]);
   const [tracks, setTracks] = useState<IntermissionTrack[]>([]);
-  const [zones, setZones] = useState<AudioZone[]>(initialAudioZones);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   // 1. Initial Load from Supabase with Fallback
@@ -26,14 +24,12 @@ export const App: React.FC = () => {
     let isMounted = true;
 
     const loadData = async () => {
-      const [fetchedZones, fetchedSchedules, fetchedTracks] = await Promise.all([
-        supabaseService.fetchAudioZones(),
+      const [fetchedSchedules, fetchedTracks] = await Promise.all([
         supabaseService.fetchBellSchedules(),
         supabaseService.fetchIntermissionTracks(),
       ]);
 
       if (isMounted) {
-        setZones(fetchedZones);
         setSchedules(fetchedSchedules);
         setTracks(fetchedTracks);
       }
@@ -42,10 +38,6 @@ export const App: React.FC = () => {
     loadData();
 
     // 2. Realtime Subscriptions
-    const unsubZones = supabaseService.subscribeToAudioZones((freshZones) => {
-      if (isMounted) setZones(freshZones);
-    });
-
     const unsubOverrides = supabaseService.subscribeToLiveOverrides((override) => {
       if (!isMounted) return;
       if (override.command === 'EMERGENCY_MUTE') {
@@ -57,7 +49,6 @@ export const App: React.FC = () => {
 
     return () => {
       isMounted = false;
-      unsubZones();
       unsubOverrides();
     };
   }, []);
@@ -134,26 +125,6 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleUpdateZoneVolume = async (zoneId: string, volume: number) => {
-    setZones((prev) =>
-      prev.map((z) => (z.id === zoneId ? { ...z, volume } : z))
-    );
-    const targetZone = zones.find((z) => z.id === zoneId);
-    if (targetZone) {
-      await supabaseService.updateZoneVolume(targetZone.zone_code, volume);
-    }
-  };
-
-  const handleToggleZoneMute = async (zoneId: string) => {
-    const targetZone = zones.find((z) => z.id === zoneId);
-    if (!targetZone) return;
-    const nextMuted = !targetZone.is_muted;
-    setZones((prev) =>
-      prev.map((z) => (z.id === zoneId ? { ...z, is_muted: nextMuted } : z))
-    );
-    await supabaseService.toggleZoneMute(targetZone.zone_code, nextMuted);
-  };
-
   return (
     <div className="min-h-screen bg-surface font-cairo text-on-surface antialiased" dir="rtl">
       {/* Right Sidebar */}
@@ -208,10 +179,7 @@ export const App: React.FC = () => {
 
           {(currentTab === 'system-configuration' || currentTab === 'media-library') && (
             <SystemConfigurationView
-              zones={zones}
               tracks={tracks}
-              onUpdateZoneVolume={handleUpdateZoneVolume}
-              onToggleZoneMute={handleToggleZoneMute}
               onDeleteTrack={handleDeleteTrack}
             />
           )}
