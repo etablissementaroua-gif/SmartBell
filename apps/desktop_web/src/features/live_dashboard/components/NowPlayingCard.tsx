@@ -18,6 +18,9 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
+  const [isBellRinging, setIsBellRinging] = useState<boolean>(false);
+  const [bellSecondsRemaining, setBellSecondsRemaining] = useState<number>(0);
+  const [chainedSessionName, setChainedSessionName] = useState<string | undefined>(undefined);
 
   const currentTrack = hasTracks ? (tracks[currentTrackIndex] || tracks[0]) : null;
   const totalDuration = currentTrack ? (currentTrack.duration_seconds || 120) : 0;
@@ -25,6 +28,10 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   useEffect(() => {
     const unsub = audioPlayerService.subscribe((state) => {
       setIsPlaying(state.isPlaying);
+      setIsBellRinging(state.isBellRinging);
+      setBellSecondsRemaining(state.bellSecondsRemaining);
+      setChainedSessionName(state.chainedSessionName);
+
       if (state.currentTime > 0) {
         setProgress(state.currentTime);
       }
@@ -212,6 +219,19 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
             </p>
           </div>
         </div>
+
+        {/* Live Chained Bell Status Alert */}
+        {isBellRinging && (
+          <div className="p-space-sm px-space-md rounded-xl bg-teal-dark/10 border border-teal-dark/30 flex items-center justify-between text-xs text-teal-dark font-bold animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">notifications_active</span>
+              <span>جاري رنين جرس {chainedSessionName || 'الاستراحة'} المدرسية — ستبدأ الإذاعة تلقائياً</span>
+            </div>
+            <span className="font-mono bg-teal-dark text-white px-2 py-0.5 rounded-lg text-xs shadow-xs">
+              متبقي: {bellSecondsRemaining}ث
+            </span>
+          </div>
+        )}
 
         {/* Audio Waveform Visualizer */}
         <div className="bg-surface-container-low p-space-md rounded-xl border border-surface-container flex flex-col gap-2">

@@ -1,10 +1,15 @@
-import { IntermissionTrack } from '../types';
+import { IntermissionTrack, BellType } from '../types';
 
 export interface AudioPlayerState {
   isPlaying: boolean;
+  isBellRinging: boolean;
+  bellSecondsRemaining: number;
+  chainedSessionName?: string;
   currentTrack: IntermissionTrack | null;
   currentTime: number;
   duration: number;
+  queueLength: number;
+  queueIndex: number;
 }
 
 type AudioListener = (state: AudioPlayerState) => void;
@@ -14,6 +19,14 @@ class AudioPlayerService {
   private audio: HTMLAudioElement | null = null;
   private currentTrack: IntermissionTrack | null = null;
   private isPlaying = false;
+  private isBellRinging = false;
+  private bellSecondsRemaining = 0;
+  private chainedSessionName: string | undefined = undefined;
+  private bellTimer: any = null;
+
+  private activePlaylistQueue: IntermissionTrack[] = [];
+  private currentQueueIndex = 0;
+
   private currentTime = 0;
   private duration = 0;
   private volume = 0.8;
@@ -42,16 +55,14 @@ class AudioPlayerService {
       });
 
       this.audio.addEventListener('pause', () => {
-        if (!this.isFallbackActive) {
+        if (!this.isFallbackActive && !this.isBellRinging) {
           this.isPlaying = false;
           this.notifyListeners();
         }
       });
 
       this.audio.addEventListener('ended', () => {
-        this.isPlaying = false;
-        this.currentTime = 0;
-        this.notifyListeners();
+        this.handleTrackEnded();
       });
 
       this.audio.addEventListener('error', (e) => {
@@ -127,9 +138,115 @@ class AudioPlayerService {
     }
   }
 
-  // --- 2. Real Playback Engine ---
+  // --- 2. Auto-Chaining Execution (Bell -> Intermission Playlist) ---
+  public async playBellThenPlaylist(
+    bellType: BellType,
+    bellDurationSec: number,
+    playlistTracks: IntermissionTrack[],
+    sessionName?: string
+  ): Promise<void> {
+    this.stop();
+    this.isBellRinging = true;
+    this.bellSecondsRemaining = Math.max(3, bellDurationSec || 15);
+    this.chainedSessionName = sessionName || (bellType === 'BREAK' ? 'استراحة المدرسة' : 'بث الإذاعة');
+    this.activePlaylistQueue = [...playlistTracks];
+    this.currentQueueIndex = 0;
+    this.isPlaying = true;
+    this.notifyListeners();
+
+    // Start physical bell audio chime
+    this.playSchoolBellChime(bellType, this.bellSecondsRemaining);
+
+    // Bell countdown timer
+    if (this.bellTimer) clearInterval(this.bellTimer);
+    this.bellTimer = setInterval(() => {
+      this.bellSecondsRemaining -= 1;
+      this.notifyListeners();
+
+      if (this.bellSecondsRemaining <= 0) {
+        clearInterval(this.bellTimer);
+        this.bellTimer = null;
+        this.isBellRinging = false;
+        this.notifyListeners();
+
+        // Immediately chain to playlist if tracks exist
+        if (this.activePlaylistQueue.length > 0) {
+          const firstTrack = this.activePlaylistQueue[0];
+          this.playTrack(firstTrack);
+        } else {
+          this.stop();
+        }
+      }
+    }, 1000);
+  }
+
+  // --- 3. School Bell Audio Chime Synthesizer ---
+  public playSchoolBellChime(type: BellType = 'ENTRY', durationSec: number = 5): void {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+
+      // Westminster & harmonic bell patterns
+      const notes = type === 'EXIT'
+        ? [523.25, 659.25, 783.99, 523.25] // C5, E5, G5, C5
+        : type === 'BREAK'
+        ? [659.25, 523.25, 587.33, 392.00] // E5, C5, D5, G4
+        : [587.33, 659.25, 783.99, 880.00]; // D5, E5, G5, A5
+
+      const repeatCount = Math.max(1, Math.floor(durationSec / 1.5));
+      let currentRepeat = 0;
+
+      const playChimePattern = () => {
+        if (!this.isBellRinging && currentRepeat > 0) {
+          try { ctx.close(); } catch (_) {}
+          return;
+        }
+
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.3);
+
+          const vol = Math.max(0.1, this.volume * 0.4);
+          gain.gain.setValueAtTime(vol, ctx.currentTime + idx * 0.3);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.3 + 0.5);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(ctx.currentTime + idx * 0.3);
+          osc.stop(ctx.currentTime + idx * 0.3 + 0.5);
+        });
+
+        currentRepeat++;
+        if (currentRepeat < repeatCount) {
+          setTimeout(playChimePattern, 1300);
+        } else {
+          setTimeout(() => {
+            try { ctx.close(); } catch (_) {}
+          }, 1500);
+        }
+      };
+
+      playChimePattern();
+    } catch (e) {
+      console.warn('School bell audio generation error:', e);
+    }
+  }
+
+  // --- 4. Real Track Playback Engine ---
   public async playTrack(track: IntermissionTrack): Promise<void> {
     this.stopFallback();
+    if (this.bellTimer) {
+      clearInterval(this.bellTimer);
+      this.bellTimer = null;
+      this.isBellRinging = false;
+    }
+
     this.currentTrack = track;
     this.duration = track.duration_seconds || 120;
     this.currentTime = 0;
@@ -154,7 +271,6 @@ class AudioPlayerService {
     // Otherwise check track.audio_url
     if (!audioSrc && track.audio_url && track.audio_url.trim()) {
       const rawUrl = track.audio_url.trim();
-      // If it's a blob url from an old session, it cannot be fetched across reload
       if (!rawUrl.startsWith('blob:')) {
         audioSrc = rawUrl;
       }
@@ -177,8 +293,25 @@ class AudioPlayerService {
     this.playMelodicFallback();
   }
 
+  private handleTrackEnded(): void {
+    if (this.activePlaylistQueue.length > 0 && this.currentQueueIndex + 1 < this.activePlaylistQueue.length) {
+      this.currentQueueIndex += 1;
+      const nextTrack = this.activePlaylistQueue[this.currentQueueIndex];
+      this.playTrack(nextTrack);
+    } else {
+      this.isPlaying = false;
+      this.currentTime = 0;
+      this.notifyListeners();
+    }
+  }
+
   public pause(): void {
     this.stopFallback();
+    if (this.bellTimer) {
+      clearInterval(this.bellTimer);
+      this.bellTimer = null;
+      this.isBellRinging = false;
+    }
     if (this.audio) {
       this.audio.pause();
     }
@@ -194,6 +327,11 @@ class AudioPlayerService {
 
   public stop(): void {
     this.stopFallback();
+    if (this.bellTimer) {
+      clearInterval(this.bellTimer);
+      this.bellTimer = null;
+      this.isBellRinging = false;
+    }
     if (this.audio) {
       this.audio.pause();
       this.audio.currentTime = 0;
@@ -224,9 +362,14 @@ class AudioPlayerService {
   public getCurrentState(): AudioPlayerState {
     return {
       isPlaying: this.isPlaying,
+      isBellRinging: this.isBellRinging,
+      bellSecondsRemaining: this.bellSecondsRemaining,
+      chainedSessionName: this.chainedSessionName,
       currentTrack: this.currentTrack,
       currentTime: this.currentTime,
       duration: this.duration,
+      queueLength: this.activePlaylistQueue.length,
+      queueIndex: this.currentQueueIndex,
     };
   }
 
@@ -249,8 +392,7 @@ class AudioPlayerService {
     });
   }
 
-  // --- 3. Melodic Synthesizer Fallback ---
-  // Plays a rich school anthem melody through speakers if the audio source URL is unavailable
+  // --- 5. Melodic Synthesizer Fallback ---
   private playMelodicFallback(): void {
     this.stopFallback();
     this.isFallbackActive = true;
@@ -291,7 +433,6 @@ class AudioPlayerService {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        // Warm harmonic triangle + lowpass
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(n.f, ctx.currentTime);
 
@@ -307,7 +448,7 @@ class AudioPlayerService {
 
         this.currentTime += 1;
         if (this.currentTime >= this.duration) {
-          this.stop();
+          this.handleTrackEnded();
           return;
         }
         this.notifyListeners();

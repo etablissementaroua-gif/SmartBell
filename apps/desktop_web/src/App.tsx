@@ -223,6 +223,7 @@ export const App: React.FC = () => {
           {currentTab === 'bell-schedules' && (
             <BellSchedulerView
               schedules={schedules}
+              tracks={tracks}
               onToggleSchedule={handleToggleSchedule}
               onAddSchedule={handleAddSchedule}
               onUpdateSchedule={handleUpdateSchedule}

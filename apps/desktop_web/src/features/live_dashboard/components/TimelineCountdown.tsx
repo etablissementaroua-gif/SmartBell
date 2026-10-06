@@ -32,7 +32,17 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
 
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-  const enabledSchedules = hasSchedules ? schedules.filter((s) => s.is_enabled) : [];
+  // Current Day of Week: Monday=1, Tuesday=2, ..., Saturday=6, Sunday=7
+  const currentDayId = now.getDay() === 0 ? 7 : now.getDay();
+
+  const enabledSchedules = hasSchedules 
+    ? schedules.filter((s) => {
+        if (!s.is_enabled) return false;
+        const days = s.days_of_week && s.days_of_week.length > 0 ? s.days_of_week : [1, 2, 3, 4, 5, 6];
+        return days.includes(currentDayId);
+      }) 
+    : [];
+
   const sortedSchedules = [...enabledSchedules].sort(
     (a, b) => timeToSeconds(a.bell_time) - timeToSeconds(b.bell_time)
   );
@@ -83,6 +93,22 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               ? (nextSchedule?.label || 'انتهت كافة أجراس اليوم المجدولة')
               : 'لا توجد أجراس مجدولة حالياً'}
           </h3>
+          {nextSchedule && (
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {nextSchedule.action_type === 'BELL_THEN_PLAYLIST' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-accent/20 text-teal-accent text-[11px] font-bold border border-teal-accent/30">
+                  <span className="material-symbols-outlined text-xs">auto_mode</span>
+                  <span>رنين جرس يتبعه بث إذاعي تلقائي</span>
+                </span>
+              )}
+              {nextSchedule.action_type === 'DIRECT_AUDIO' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-400/20 text-indigo-200 text-[11px] font-bold border border-indigo-400/30">
+                  <span className="material-symbols-outlined text-xs">music_note</span>
+                  <span>بث مقطع صوتي مباشر</span>
+                </span>
+              )}
+            </div>
+          )}
           <p className="text-[12px] text-slate-300 mt-1">
             {hasSchedules
               ? (nextSchedule?.details || 'الموعد المبرمج التالي في خطة الدوام المدرسي')

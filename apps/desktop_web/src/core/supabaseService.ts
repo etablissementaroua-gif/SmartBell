@@ -5,7 +5,9 @@ import {
   IntermissionTrack, 
   AdhanConfig, 
   SystemAuditLog,
-  LiveOverridePayload 
+  LiveOverridePayload,
+  parseScheduleDetails,
+  serializeScheduleDetails
 } from '../types';
 import { 
   initialAudioZones, 
@@ -114,18 +116,28 @@ export class SupabaseService {
         return [];
       }
 
-      return data.map((s) => ({
-        id: s.id,
-        preset_id: s.preset_id || 'preset-1',
-        bell_time: s.bell_time,
-        bell_type: s.bell_type,
-        label: s.label,
-        duration_seconds: s.duration_seconds || 10,
-        target_zones: Array.isArray(s.target_zones)
-          ? s.target_zones
-          : (typeof s.target_zones === 'string' ? s.target_zones.split(',') : ['ALL']),
-        is_enabled: Boolean(s.is_enabled),
-      }));
+      return data.map((s) => {
+        const meta = parseScheduleDetails(s.details);
+        return {
+          id: s.id,
+          preset_id: s.preset_id || 'preset-1',
+          bell_time: s.bell_time,
+          bell_type: s.bell_type,
+          label: s.label,
+          details: meta.description || s.details || '',
+          duration_seconds: s.duration_seconds || 10,
+          target_zones: Array.isArray(s.target_zones)
+            ? s.target_zones
+            : (typeof s.target_zones === 'string' ? s.target_zones.split(',') : ['ALL']),
+          is_enabled: Boolean(s.is_enabled),
+          audio_url: s.audio_url || meta.media_id || '',
+          days_of_week: meta.days_of_week,
+          action_type: meta.action_type,
+          media_id: meta.media_id,
+          media_title: meta.media_title,
+          playlist_session: meta.playlist_session,
+        };
+      });
     } catch (err) {
       console.error('❌ [SupabaseService] Error fetching bell schedules:', err);
       return [];
@@ -414,11 +426,22 @@ export class SupabaseService {
         }
       }
 
+      const meta = serializeScheduleDetails({
+        days_of_week: schedule.days_of_week || [1, 2, 3, 4, 5, 6],
+        action_type: schedule.action_type || 'BELL_ONLY',
+        media_id: schedule.media_id,
+        media_title: schedule.media_title,
+        playlist_session: schedule.playlist_session,
+        description: schedule.details || '',
+      });
+
       const { error } = await supabase.from('bell_schedules').insert({
         preset_id: validPresetId,
         bell_time: schedule.bell_time,
         bell_type: schedule.bell_type,
         label: schedule.label,
+        details: meta,
+        audio_url: schedule.audio_url || schedule.media_id || null,
         duration_seconds: schedule.duration_seconds,
         target_zones: Array.isArray(schedule.target_zones) ? schedule.target_zones : ['ALL'],
         is_enabled: schedule.is_enabled,
@@ -439,6 +462,25 @@ export class SupabaseService {
     try {
       const payload: any = { ...updates };
       delete payload.id;
+
+      if (updates.days_of_week || updates.action_type || updates.media_id || updates.playlist_session || updates.details) {
+        payload.details = serializeScheduleDetails({
+          days_of_week: updates.days_of_week || [1, 2, 3, 4, 5, 6],
+          action_type: updates.action_type || 'BELL_ONLY',
+          media_id: updates.media_id,
+          media_title: updates.media_title,
+          playlist_session: updates.playlist_session,
+          description: updates.details || '',
+        });
+      }
+
+      // Remove virtual/extended fields not present as separate DB columns
+      delete payload.days_of_week;
+      delete payload.action_type;
+      delete payload.media_id;
+      delete payload.media_title;
+      delete payload.playlist_session;
+
       const { error } = await supabase
         .from('bell_schedules')
         .update(payload)
