@@ -14,9 +14,15 @@ export const getSupabaseUrl = (): string => {
 export const getSupabaseAnonKey = (): string => {
   if (typeof window !== 'undefined') {
     const customKey = localStorage.getItem('smartbell_supabase_anon_key');
-    if (customKey && customKey.trim()) return customKey.trim();
+    if (customKey && customKey.trim() && !customKey.includes('dummy') && customKey.length > 50) {
+      return customKey.trim();
+    }
   }
-  return import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (envKey && !envKey.includes('dummy') && envKey.length > 50) {
+    return envKey;
+  }
+  return DEFAULT_SUPABASE_ANON_KEY;
 };
 
 export let supabase: SupabaseClient = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
