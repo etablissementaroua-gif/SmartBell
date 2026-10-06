@@ -5,15 +5,18 @@ import { supabaseService } from '../../../core/supabaseService';
 interface NowPlayingCardProps {
   tracks: IntermissionTrack[];
   onInsertTrack: () => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
-export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsertTrack }) => {
+export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsertTrack, onShowToast }) => {
   const hasTracks = tracks.length > 0;
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [isYardMuted, setIsYardMuted] = useState<boolean>(false);
   const [yardVolume, setYardVolume] = useState<number>(75);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const [isRepeat, setIsRepeat] = useState<boolean>(false);
 
   const currentTrack = hasTracks ? (tracks[currentTrackIndex] || tracks[0]) : null;
   const totalDuration = currentTrack ? (currentTrack.duration_seconds || 120) : 0;
@@ -22,14 +25,29 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
     let timer: number;
     if (isPlaying && hasTracks && totalDuration > 0) {
       timer = window.setInterval(() => {
-        setProgress((prev) => (prev >= totalDuration ? 0 : prev + 1));
+        setProgress((prev) => {
+          if (prev >= totalDuration) {
+            if (isRepeat) {
+              return 0;
+            } else if (isShuffle && tracks.length > 1) {
+              const nextRnd = Math.floor(Math.random() * tracks.length);
+              setCurrentTrackIndex(nextRnd);
+              return 0;
+            } else if (currentTrackIndex < tracks.length - 1) {
+              setCurrentTrackIndex((c) => c + 1);
+              return 0;
+            }
+            return 0;
+          }
+          return prev + 1;
+        });
       }, 1000);
     } else if (!hasTracks) {
       setIsPlaying(false);
       setProgress(0);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, hasTracks, totalDuration]);
+  }, [isPlaying, hasTracks, totalDuration, isRepeat, isShuffle, tracks.length, currentTrackIndex]);
 
   const formatSeconds = (sec: number) => {
     const mins = Math.floor(sec / 60);
@@ -38,6 +56,73 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   };
 
   const remainingSeconds = Math.max(0, totalDuration - progress);
+
+  const toggleShuffle = () => {
+    const nextVal = !isShuffle;
+    setIsShuffle(nextVal);
+    if (onShowToast) {
+      onShowToast('info', nextVal ? 'تم تفعيل نمط التشغيل العشوائي للفقرات' : 'تم تعطيل التشغيل العشوائي', 'الإذاعة المدرسية');
+    }
+  };
+
+  const toggleRepeat = () => {
+    const nextVal = !isRepeat;
+    setIsRepeat(nextVal);
+    if (onShowToast) {
+      onShowToast('info', nextVal ? 'تم تفعيل تكرار الفقرة الحالية' : 'تم تعطيل تكرار الفقرة', 'الإذاعة المدرسية');
+    }
+  };
+
+  const handleTogglePlay = () => {
+    if (!hasTracks) return;
+    const nextPlaying = !isPlaying;
+    setIsPlaying(nextPlaying);
+    supabaseService.playLocalBeep(nextPlaying ? 523 : 392, 0.15);
+    supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', currentTrack);
+    if (onShowToast) {
+      onShowToast('info', nextPlaying ? `جاري بث: ${currentTrack?.title || 'الفقرة الإذاعية'}` : 'تم إيقاف البث الإذاعي مؤقتاً', 'المشغل الصوتي');
+    }
+  };
+
+  const handlePrevTrack = () => {
+    const prevIdx = Math.max(0, currentTrackIndex - 1);
+    setCurrentTrackIndex(prevIdx);
+    setProgress(0);
+    supabaseService.playLocalBeep(650, 0.1);
+    if (tracks[prevIdx]) {
+      supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
+      if (onShowToast) {
+        onShowToast('info', `تم الانتقال إلى: ${tracks[prevIdx].title}`, 'المقطع السابق');
+      }
+    }
+  };
+
+  const handleNextTrack = () => {
+    const nextIdx = Math.min(tracks.length - 1, currentTrackIndex + 1);
+    setCurrentTrackIndex(nextIdx);
+    setProgress(0);
+    supabaseService.playLocalBeep(750, 0.1);
+    if (tracks[nextIdx]) {
+      supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
+      if (onShowToast) {
+        onShowToast('info', `تم الانتقال إلى: ${tracks[nextIdx].title}`, 'المقطع التالي');
+      }
+    }
+  };
+
+  const handleYardMute = () => {
+    const nextMuted = !isYardMuted;
+    setIsYardMuted(nextMuted);
+    supabaseService.toggleZoneMute('ZONE_A', nextMuted);
+    if (onShowToast) {
+      onShowToast(nextMuted ? 'warning' : 'success', nextMuted ? 'تم كتم سماعات الساحة الخارجية' : 'تم إلغاء كتم سماعات الساحة', 'تحكم الساحة');
+    }
+  };
+
+  const handleYardVolumeChange = (newVol: number) => {
+    setYardVolume(newVol);
+    supabaseService.updateZoneVolume('ZONE_A', newVol);
+  };
 
   return (
     <div className="flex flex-col gap-space-lg w-full">
@@ -140,22 +225,21 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <button
             type="button"
             disabled={!hasTracks}
-            className="text-on-surface-variant hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
-            title="تشغيل عشوائي"
+            onClick={toggleShuffle}
+            className={`transition-all p-1.5 rounded-lg active:scale-90 ${
+              isShuffle
+                ? 'text-teal-dark bg-secondary-container/50 font-bold ring-1 ring-teal-dark/30 shadow-sm'
+                : 'text-on-surface-variant hover:text-teal-dark disabled:opacity-30'
+            }`}
+            title={isShuffle ? 'إلغاء التشغيل العشوائي' : 'تشغيل عشوائي'}
           >
             <span className="material-symbols-outlined text-xl">shuffle</span>
           </button>
           <button
             type="button"
             disabled={!hasTracks || currentTrackIndex === 0}
-            onClick={() => {
-              const prevIdx = Math.max(0, currentTrackIndex - 1);
-              setCurrentTrackIndex(prevIdx);
-              if (tracks[prevIdx]) {
-                supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
-              }
-            }}
-            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
+            onClick={handlePrevTrack}
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1 active:scale-90"
             title="المقطع السابق"
           >
             <span className="material-symbols-outlined text-2xl">skip_previous</span>
@@ -163,12 +247,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <button
             type="button"
             disabled={!hasTracks}
-            onClick={() => {
-              if (!hasTracks) return;
-              const nextPlaying = !isPlaying;
-              setIsPlaying(nextPlaying);
-              supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', currentTrack);
-            }}
+            onClick={handleTogglePlay}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ring-4 ${
               hasTracks
                 ? 'bg-teal-dark text-on-primary hover:bg-secondary ring-teal-dark/20'
@@ -183,14 +262,8 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <button
             type="button"
             disabled={!hasTracks || currentTrackIndex >= tracks.length - 1}
-            onClick={() => {
-              const nextIdx = Math.min(tracks.length - 1, currentTrackIndex + 1);
-              setCurrentTrackIndex(nextIdx);
-              if (tracks[nextIdx]) {
-                supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
-              }
-            }}
-            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
+            onClick={handleNextTrack}
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1 active:scale-90"
             title="المقطع التالي"
           >
             <span className="material-symbols-outlined text-2xl">skip_next</span>
@@ -198,8 +271,13 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <button
             type="button"
             disabled={!hasTracks}
-            className="text-on-surface-variant hover:text-teal-dark disabled:opacity-30 transition-colors p-1"
-            title="تكرار الفقرة"
+            onClick={toggleRepeat}
+            className={`transition-all p-1.5 rounded-lg active:scale-90 ${
+              isRepeat
+                ? 'text-teal-dark bg-secondary-container/50 font-bold ring-1 ring-teal-dark/30 shadow-sm'
+                : 'text-on-surface-variant hover:text-teal-dark disabled:opacity-30'
+            }`}
+            title={isRepeat ? 'إلغاء تكرار الفقرة' : 'تكرار الفقرة'}
           >
             <span className="material-symbols-outlined text-xl">repeat</span>
           </button>
@@ -209,14 +287,10 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         <div className="flex items-center justify-between gap-space-md pt-space-sm border-t border-surface-container bg-surface-container-low p-space-md rounded-xl">
           <button
             type="button"
-            onClick={() => {
-              const nextMuted = !isYardMuted;
-              setIsYardMuted(nextMuted);
-              supabaseService.toggleZoneMute('ZONE_A', nextMuted);
-            }}
-            className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+            onClick={handleYardMute}
+            className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
               isYardMuted
-                ? 'bg-error text-on-error'
+                ? 'bg-error text-on-error animate-pulse'
                 : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'
             }`}
           >
@@ -234,7 +308,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
               max="100"
               value={isYardMuted ? 0 : yardVolume}
               disabled={isYardMuted}
-              onChange={(e) => setYardVolume(Number(e.target.value))}
+              onChange={(e) => handleYardVolumeChange(Number(e.target.value))}
               className="w-full h-1.5 bg-surface-container rounded-lg appearance-none cursor-pointer accent-teal-dark"
             />
             <span className="text-xs font-mono font-bold text-on-surface min-w-[3ch]">

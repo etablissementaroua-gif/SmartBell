@@ -29,6 +29,39 @@ export class SupabaseService {
     return SupabaseService.instance;
   }
 
+  // 0. Audio Feedback via Web Audio API
+  public playLocalBeep(freq = 880, duration = 0.4, type: OscillatorType = 'sine'): void {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+      setTimeout(() => {
+        try {
+          ctx.close();
+        } catch (_) {}
+      }, (duration + 0.1) * 1000);
+    } catch (e) {
+      console.warn('AudioContext not permitted or supported:', e);
+    }
+  }
+
+  public playSchoolBell(): void {
+    this.playLocalBeep(659.25, 0.4, 'sine'); // E5
+    setTimeout(() => {
+      this.playLocalBeep(523.25, 0.6, 'sine'); // C5
+    }, 280);
+  }
+
   // 1. Fetch Audio Zones
   public async fetchAudioZones(): Promise<AudioZone[]> {
     if (!isSupabaseConfigured()) return initialAudioZones;
@@ -402,6 +435,26 @@ export class SupabaseService {
     }
   }
 
+  public async updateBellSchedule(id: string, updates: Partial<BellSchedule>): Promise<boolean> {
+    try {
+      const payload: any = { ...updates };
+      delete payload.id;
+      const { error } = await supabase
+        .from('bell_schedules')
+        .update(payload)
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ [SupabaseService] Error updating schedule:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('❌ [SupabaseService] Exception updating schedule:', err);
+      return false;
+    }
+  }
+
   public async deleteBellSchedule(scheduleId: string): Promise<boolean> {
     try {
       const { error } = await supabase
@@ -446,6 +499,40 @@ export class SupabaseService {
     }
   }
 
+  public async updateIntermissionTrack(id: string, updates: Partial<IntermissionTrack>): Promise<boolean> {
+    try {
+      const payload: any = { ...updates };
+      delete payload.id;
+      delete payload.duration_formatted;
+      const { error } = await supabase
+        .from('intermission_tracks')
+        .update(payload)
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ [SupabaseService] Error updating track:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('❌ [SupabaseService] Exception updating track:', err);
+      return false;
+    }
+  }
+
+  public async reorderIntermissionTracks(orderedIds: string[]): Promise<boolean> {
+    try {
+      const updates = orderedIds.map((id, index) =>
+        supabase.from('intermission_tracks').update({ play_order: index + 1 }).eq('id', id)
+      );
+      await Promise.all(updates);
+      return true;
+    } catch (err) {
+      console.error('❌ [SupabaseService] Error reordering tracks:', err);
+      return false;
+    }
+  }
+
   public async deleteIntermissionTrack(trackId: string): Promise<boolean> {
     try {
       const { error } = await supabase
@@ -482,13 +569,20 @@ export class SupabaseService {
     try {
       const { error } = await supabase
         .from('adhan_settings')
-        .update({
-          ...settings,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', 1);
+        .upsert(
+          {
+            id: 1,
+            ...settings,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
 
-      return !error;
+      if (error) {
+        console.error('❌ [SupabaseService] Error upserting adhan settings:', error);
+        return false;
+      }
+      return true;
     } catch (err) {
       console.error('❌ [SupabaseService] Error saving adhan settings:', err);
       return false;
@@ -504,6 +598,10 @@ export class SupabaseService {
   }
 
   public async sendPingTest(): Promise<boolean> {
+    // Play local audio chime feedback immediately in browser
+    this.playLocalBeep(880, 0.4);
+    setTimeout(() => this.playLocalBeep(1174.66, 0.5), 200);
+
     return this.triggerInstantOverride('PING_TEST', 'ALL', {
       timestamp: new Date().toISOString(),
       action: 'PING',

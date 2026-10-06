@@ -2,9 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { initialAdhanConfig } from '../../core/mockData';
 import { supabaseService } from '../../core/supabaseService';
 
-export const AdhanSettingsView: React.FC = () => {
+interface AdhanSettingsViewProps {
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
+}
+
+export const AdhanSettingsView: React.FC<AdhanSettingsViewProps> = ({ onShowToast }) => {
   const [config, setConfig] = useState(initialAdhanConfig);
   const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isTesting, setIsTesting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -24,17 +29,38 @@ export const AdhanSettingsView: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await supabaseService.saveAdhanSettings(config);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSaving(true);
+    const success = await supabaseService.saveAdhanSettings(config);
+    setIsSaving(false);
+    if (success) {
+      setIsSaved(true);
+      if (onShowToast) {
+        onShowToast('success', 'تم حفظ إعدادات الأذان والمقاطعة التلقائية في السحابة بنجاح.', 'إعدادات الأذان');
+      }
+      setTimeout(() => setIsSaved(false), 3000);
+    } else {
+      if (onShowToast) {
+        onShowToast('error', 'تعذر حفظ الإعدادات، يرجى التحقق من اتصال الشبكة.', 'خطأ في الحفظ');
+      }
+    }
   };
 
   const handleTestAdhan = async () => {
     setIsTesting(true);
+
+    // Audio chime feedback
+    supabaseService.playLocalBeep(440, 0.4);
+    setTimeout(() => supabaseService.playLocalBeep(554.37, 0.5), 250);
+
     await supabaseService.triggerInstantOverride('PERIOD_END', 'ALL', {
       action: 'TEST_ADHAN',
       duration_seconds: 15,
     });
+
+    if (onShowToast) {
+      onShowToast('info', 'جاري بث نداء أذان تجريبي للمعاينة عبر مكبرات الصوت...', 'تجربة صوت الأذان');
+    }
+
     setTimeout(() => setIsTesting(false), 3000);
   };
 
@@ -195,9 +221,17 @@ export const AdhanSettingsView: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-teal-dark hover:bg-secondary text-white font-bold text-xs transition-colors shadow-sm mt-2"
+            disabled={isSaving}
+            className="w-full py-2.5 rounded-xl bg-teal-dark hover:bg-secondary disabled:opacity-50 text-white font-bold text-xs transition-colors shadow-sm mt-2 flex items-center justify-center gap-2"
           >
-            حفظ إعدادات الأذان والمقاطعة
+            {isSaving ? (
+              <>
+                <span className="material-symbols-outlined text-base animate-spin">refresh</span>
+                <span>جاري حفظ الإعدادات في السحابة...</span>
+              </>
+            ) : (
+              <span>حفظ إعدادات الأذان والمقاطعة</span>
+            )}
           </button>
         </form>
 

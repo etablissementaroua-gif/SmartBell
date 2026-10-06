@@ -5,29 +5,56 @@ import { supabaseService } from '../../core/supabaseService';
 interface SystemConfigurationViewProps {
   tracks?: IntermissionTrack[];
   onDeleteTrack?: (trackId: string) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = ({
   tracks = [],
   onDeleteTrack,
+  onShowToast,
 }) => {
   const [masterVolume, setMasterVolume] = useState<number>(80);
   const [isPingTesting, setIsPingTesting] = useState<boolean>(false);
   const [pingSuccess, setPingSuccess] = useState<boolean>(false);
   const [activeMediaFilter, setActiveMediaFilter] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
 
   const handlePingTest = async () => {
     setIsPingTesting(true);
     setPingSuccess(false);
+    if (onShowToast) {
+      onShowToast('info', 'جاري بث إشارة فحص المكبرات الصوتية...', 'فحص المكبرات');
+    }
     await supabaseService.sendPingTest();
     setTimeout(() => {
       setIsPingTesting(false);
       setPingSuccess(true);
+      if (onShowToast) {
+        onShowToast('success', 'تم فحص المكبرات بنجاح والتأكد من استجابة النظام.', 'فحص المكبرات');
+      }
       setTimeout(() => {
         setPingSuccess(false);
       }, 3000);
     }, 1200);
+  };
+
+  const handleMasterVolumeChange = (vol: number) => {
+    setMasterVolume(vol);
+    supabaseService.updateMasterVolume(vol);
+  };
+
+  const handlePreviewMedia = (track: IntermissionTrack) => {
+    if (playingMediaId === track.id) {
+      setPlayingMediaId(null);
+    } else {
+      setPlayingMediaId(track.id);
+      supabaseService.playLocalBeep(523.25, 0.4);
+      setTimeout(() => supabaseService.playLocalBeep(659.25, 0.4), 220);
+      if (onShowToast) {
+        onShowToast('info', `جاري الاستماع للملف: ${track.title}`, 'معاينة الملف');
+      }
+    }
   };
 
   // Filter media tracks according to category and search query
@@ -71,7 +98,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                   min="0"
                   max="100"
                   value={masterVolume}
-                  onChange={(e) => setMasterVolume(Number(e.target.value))}
+                  onChange={(e) => handleMasterVolumeChange(Number(e.target.value))}
                   className="w-36 h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-teal-dark"
                 />
                 <span className="text-sm font-mono font-bold text-on-surface min-w-[3ch]">{masterVolume}%</span>
@@ -233,10 +260,17 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                     <td className="py-space-sm px-space-md">
                       <button
                         type="button"
-                        className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center hover:bg-teal-dark hover:text-white transition-colors"
+                        onClick={() => handlePreviewMedia(track)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          playingMediaId === track.id
+                            ? 'bg-teal-dark text-white ring-2 ring-teal-dark/40 animate-pulse'
+                            : 'bg-secondary-container text-on-secondary-container hover:bg-teal-dark hover:text-white'
+                        }`}
                         title="استماع"
                       >
-                        <span className="material-symbols-outlined text-lg">play_arrow</span>
+                        <span className="material-symbols-outlined text-lg">
+                          {playingMediaId === track.id ? 'pause' : 'play_arrow'}
+                        </span>
                       </button>
                     </td>
                     <td className="py-space-sm px-space-md">

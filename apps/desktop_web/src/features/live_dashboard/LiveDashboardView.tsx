@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NowPlayingCard } from './components/NowPlayingCard';
 import { OverridesPanel } from './components/OverridesPanel';
 import { TimelineCountdown } from './components/TimelineCountdown';
@@ -11,6 +11,7 @@ interface LiveDashboardViewProps {
   isEmergencyMuted: boolean;
   onToggleEmergencyMute: () => void;
   onNavigateToTab: (tab: any) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
@@ -19,35 +20,25 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
   isEmergencyMuted,
   onToggleEmergencyMute,
   onNavigateToTab,
+  onShowToast,
 }) => {
-  const [notification, setNotification] = useState<string | null>(null);
-
   const triggerInstantBell = async (
     bellName: string,
     duration: number,
     command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END',
     targetZone: string = 'ALL'
   ) => {
-    setNotification(`🔔 جاري بث [${bellName}] لنطاق [${targetZone}] لمدة ${duration} ثانية...`);
+    if (onShowToast) {
+      onShowToast('info', `جاري بث [${bellName}] لنطاق [${targetZone}] لمدة ${duration} ثانية...`, 'جرس فوري');
+    }
     await supabaseService.triggerInstantOverride(command, targetZone, {
       duration_seconds: duration,
       bell_name: bellName,
     });
-    setTimeout(() => {
-      setNotification(null);
-    }, 4000);
   };
 
   return (
     <div className="flex flex-col gap-space-xl w-full max-w-[1720px] mx-auto pb-12">
-      {/* Toast Notification Bar */}
-      {notification && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-primary-container text-white px-6 py-3 rounded-2xl shadow-2xl border border-teal-dark flex items-center gap-3 animate-bounce">
-          <span className="material-symbols-outlined text-teal-accent">sensors</span>
-          <span className="font-bold text-sm">{notification}</span>
-        </div>
-      )}
-
       {/* Emergency Mute Banner */}
       {isEmergencyMuted && (
         <div className="bg-error text-on-error p-4 rounded-2xl shadow-lg flex items-center justify-between animate-pulse">
@@ -74,6 +65,7 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
           <NowPlayingCard
             tracks={tracks}
             onInsertTrack={() => onNavigateToTab('media-library')}
+            onShowToast={onShowToast}
           />
         </div>
 
@@ -83,6 +75,7 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
             isEmergencyMuted={isEmergencyMuted}
             onToggleEmergencyMute={onToggleEmergencyMute}
             onTriggerInstantBell={triggerInstantBell}
+            onShowToast={onShowToast}
           />
         </div>
 

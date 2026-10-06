@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabaseService } from '../../../core/supabaseService';
 
 interface OverridesPanelProps {
@@ -10,19 +10,37 @@ interface OverridesPanelProps {
     command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END',
     targetZone?: string
   ) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const OverridesPanel: React.FC<OverridesPanelProps> = ({
   isEmergencyMuted,
   onToggleEmergencyMute,
   onTriggerInstantBell,
+  onShowToast,
 }) => {
   const [isMicActive, setIsMicActive] = useState<boolean>(false);
   const [selectedZones, setSelectedZones] = useState<string[]>([
-    'ZONE_A',
-    'ZONE_B',
+    'الساحة الرئيسية',
+    'الممرات الداخلية',
   ]);
-  const [activeBell, setActiveBell] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<{ bell: string; secondsLeft: number } | null>(null);
+  const [vuLevel, setVuLevel] = useState<number>(0);
+
+  // Dynamic VU Meter animation while mic is active
+  useEffect(() => {
+    let interval: any;
+    if (isMicActive) {
+      interval = setInterval(() => {
+        // Random level between 5 and 11 to create realistic live audio bouncing
+        const lvl = Math.floor(Math.random() * 7) + 5;
+        setVuLevel(lvl);
+      }, 140);
+    } else {
+      setVuLevel(0);
+    }
+    return () => clearInterval(interval);
+  }, [isMicActive]);
 
   const toggleZone = (zone: string) => {
     setSelectedZones((prev) =>
@@ -35,21 +53,51 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
     duration: number,
     command: 'INSTANT_ENTRY' | 'INSTANT_EXIT' | 'PERIOD_END'
   ) => {
-    setActiveBell(bellName);
-    onTriggerInstantBell(bellName, duration, command, selectedZones.join(',') || 'ALL');
-    setTimeout(() => {
-      setActiveBell(null);
-    }, duration * 1000);
+    if (countdown !== null) return; // Prevent multiple overlapping chimes
+
+    // Audio chime feedback in browser
+    supabaseService.playSchoolBell();
+
+    const target = selectedZones.join(',') || 'ALL';
+    onTriggerInstantBell(bellName, duration, command, target);
+
+    setCountdown({ bell: bellName, secondsLeft: duration });
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (!prev || prev.secondsLeft <= 1) {
+          clearInterval(timer);
+          if (onShowToast) {
+            onShowToast('success', `اكتمل رنين [${bellName}] بنجاح`, 'اكتمل الرنين');
+          }
+          return null;
+        }
+        return { ...prev, secondsLeft: prev.secondsLeft - 1 };
+      });
+    }, 1000);
   };
 
   const handleToggleMic = async () => {
     const nextState = !isMicActive;
     setIsMicActive(nextState);
+
+    // Audio tone cue
+    supabaseService.playLocalBeep(nextState ? 660 : 440, 0.2);
+
+    const target = selectedZones.join(',') || 'ALL';
     await supabaseService.triggerInstantOverride(
       'MIC_BROADCAST',
-      selectedZones.join(',') || 'ALL',
+      target,
       { action: nextState ? 'START' : 'STOP' }
     );
+
+    if (onShowToast) {
+      if (nextState) {
+        onShowToast('info', `تم فتح الميكروفون للبث المباشر على نطاق: ${target}`, 'المايك المباشر');
+      } else {
+        onShowToast('info', 'تم إغلاق الميكروفون المباشر وتوقف البث الصوتي.', 'المايك المباشر');
+      }
+    }
   };
 
   return (
@@ -58,11 +106,11 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 px-space-md py-1 rounded-full bg-surface-container-high text-on-surface font-bold text-xs">
           <span className="material-symbols-outlined text-sm text-teal-dark">event_available</span>
-          <span>الدوام المدرسي الكامل (8 مهام)</span>
+          <span>الدوام المدرسي الكامل</span>
         </div>
         <div className="flex items-center gap-1.5 px-space-md py-1 rounded-full bg-surface-container-low text-on-surface-variant font-mono text-xs">
           <span className="material-symbols-outlined text-sm text-teal-dark">speaker_group</span>
-          <span>ساعة مكبرات الصوت (16 مخرج نشط)</span>
+          <span>مكبرات الصوت النشطة</span>
         </div>
       </div>
 
@@ -79,7 +127,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
             </div>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-mono text-[10px] font-bold">
-            PRIORITY
+            PRIORITY 1
           </span>
         </div>
 
@@ -122,86 +170,110 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
         {/* 3 Chimes Cards */}
         <div className="flex flex-col gap-2.5">
           {/* Bell 1: Instant Entry */}
-          <div className="bg-surface-container-low p-3 rounded-xl border border-surface-container flex items-center justify-between hover:bg-surface-container transition-colors">
+          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+            countdown?.bell === 'جرس الدخول المباشر'
+              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
+          }`}>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => handlePlayBell('جرس الدخول المباشر', 20, 'INSTANT_ENTRY')}
-                disabled={activeBell === 'جرس الدخول المباشر'}
+                disabled={countdown !== null}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  activeBell === 'جرس الدخول المباشر'
-                    ? 'bg-teal-dark text-on-primary animate-spin'
-                    : 'bg-primary text-on-primary hover:bg-teal-dark'
+                  countdown?.bell === 'جرس الدخول المباشر'
+                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                    : 'bg-primary text-on-primary hover:bg-teal-dark disabled:opacity-40'
                 }`}
                 title="رنين فوري"
               >
                 <span className="material-symbols-outlined text-xl">
-                  {activeBell === 'جرس الدخول المباشر' ? 'refresh' : 'play_arrow'}
+                  {countdown?.bell === 'جرس الدخول المباشر' ? 'notifications_active' : 'play_arrow'}
                 </span>
               </button>
               <div className="flex flex-col">
-                <span className="font-bold text-[13px] text-on-surface">جرس الدخول المباشر</span>
-                <span className="text-[11px] text-on-surface-variant">رنين الصعود للطابور والاصطفاف المدرسي</span>
+                <span className="font-bold text-[13px]">جرس الدخول المباشر</span>
+                <span className="text-[11px] opacity-80">رنين الصعود للطابور والاصطفاف المدرسي</span>
               </div>
             </div>
-            <span className="font-mono text-xs font-bold text-on-surface bg-surface-container-lowest px-2 py-1 rounded-lg">
-              20 ثانية
+            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+              countdown?.bell === 'جرس الدخول المباشر'
+                ? 'bg-teal-dark text-white animate-pulse'
+                : 'bg-surface-container-lowest text-on-surface'
+            }`}>
+              {countdown?.bell === 'جرس الدخول المباشر' ? `متبقي ${countdown.secondsLeft} ثانية` : '20 ثانية'}
             </span>
           </div>
 
           {/* Bell 2: Dismissal Bell */}
-          <div className="bg-surface-container-low p-3 rounded-xl border border-surface-container flex items-center justify-between hover:bg-surface-container transition-colors">
+          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+            countdown?.bell === 'جرس الانصراف'
+              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
+          }`}>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => handlePlayBell('جرس الانصراف', 15, 'INSTANT_EXIT')}
-                disabled={activeBell === 'جرس الانصراف'}
+                disabled={countdown !== null}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  activeBell === 'جرس الانصراف'
-                    ? 'bg-teal-dark text-on-primary animate-spin'
-                    : 'bg-teal-dark text-on-primary hover:bg-secondary'
+                  countdown?.bell === 'جرس الانصراف'
+                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                    : 'bg-teal-dark text-on-primary hover:bg-secondary disabled:opacity-40'
                 }`}
                 title="رنين فوري"
               >
                 <span className="material-symbols-outlined text-xl">
-                  {activeBell === 'جرس الانصراف' ? 'refresh' : 'play_arrow'}
+                  {countdown?.bell === 'جرس الانصراف' ? 'notifications_active' : 'play_arrow'}
                 </span>
               </button>
               <div className="flex flex-col">
-                <span className="font-bold text-[13px] text-on-surface">جرس الانصراف</span>
-                <span className="text-[11px] text-on-surface-variant">رنين ثلاثي النغمة لانتهاء الدوام ومغادرة الإدارة</span>
+                <span className="font-bold text-[13px]">جرس الانصراف</span>
+                <span className="text-[11px] opacity-80">رنين ثلاثي النغمة لانتهاء الدوام ومغادرة الإدارة</span>
               </div>
             </div>
-            <span className="font-mono text-xs font-bold text-on-surface bg-surface-container-lowest px-2 py-1 rounded-lg">
-              15 ثانية
+            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+              countdown?.bell === 'جرس الانصراف'
+                ? 'bg-teal-dark text-white animate-pulse'
+                : 'bg-surface-container-lowest text-on-surface'
+            }`}>
+              {countdown?.bell === 'جرس الانصراف' ? `متبقي ${countdown.secondsLeft} ثانية` : '15 ثانية'}
             </span>
           </div>
 
           {/* Bell 3: Period End Warning */}
-          <div className="bg-surface-container-low p-3 rounded-xl border border-surface-container flex items-center justify-between hover:bg-surface-container transition-colors">
+          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+            countdown?.bell === 'تنبيه نهاية الحصة'
+              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
+          }`}>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10, 'PERIOD_END')}
-                disabled={activeBell === 'تنبيه نهاية الحصة'}
+                disabled={countdown !== null}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  activeBell === 'تنبيه نهاية الحصة'
-                    ? 'bg-teal-dark text-on-primary animate-spin'
-                    : 'bg-surface-container-highest text-on-surface hover:bg-teal-dark hover:text-on-primary'
+                  countdown?.bell === 'تنبيه نهاية الحصة'
+                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                    : 'bg-surface-container-highest text-on-surface hover:bg-teal-dark hover:text-on-primary disabled:opacity-40'
                 }`}
                 title="رنين فوري"
               >
                 <span className="material-symbols-outlined text-xl">
-                  {activeBell === 'تنبيه نهاية الحصة' ? 'refresh' : 'play_arrow'}
+                  {countdown?.bell === 'تنبيه نهاية الحصة' ? 'notifications_active' : 'play_arrow'}
                 </span>
               </button>
               <div className="flex flex-col">
-                <span className="font-bold text-[13px] text-on-surface">تنبيه نهاية الحصة</span>
-                <span className="text-[11px] text-on-surface-variant">إشعار صوتي بقرب انتهاء وقت الحصة</span>
+                <span className="font-bold text-[13px]">تنبيه نهاية الحصة</span>
+                <span className="text-[11px] opacity-80">إشعار صوتي بقرب انتهاء وقت الحصة</span>
               </div>
             </div>
-            <span className="font-mono text-xs font-bold text-on-surface bg-surface-container-lowest px-2 py-1 rounded-lg">
-              10 ثوانٍ
+            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+              countdown?.bell === 'تنبيه نهاية الحصة'
+                ? 'bg-teal-dark text-white animate-pulse'
+                : 'bg-surface-container-lowest text-on-surface'
+            }`}>
+              {countdown?.bell === 'تنبيه نهاية الحصة' ? `متبقي ${countdown.secondsLeft} ثانية` : '10 ثوانٍ'}
             </span>
           </div>
         </div>
@@ -251,21 +323,21 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono">
             <span>مستوى الإشارة الصوتية (VU)</span>
             <span className={isMicActive ? 'text-teal-dark font-bold' : ''}>
-              {isMicActive ? '-6 dB (مثالي)' : 'ساكن'}
+              {isMicActive ? `- ${12 - vuLevel} dB (مثالي)` : 'ساكن'}
             </span>
           </div>
           <div className="grid grid-cols-12 gap-1 h-3 items-center">
             {[...Array(12)].map((_, i) => {
-              const isLit = isMicActive && i < 9;
-              const isPeak = isMicActive && i >= 10;
+              const isLit = isMicActive && i < vuLevel;
+              const isPeak = isMicActive && i >= 10 && i < vuLevel;
               return (
                 <div
                   key={i}
-                  className={`h-full rounded-sm transition-all duration-150 ${
+                  className={`h-full rounded-sm transition-all duration-100 ${
                     isPeak
                       ? 'bg-error'
                       : isLit
-                      ? i > 6
+                      ? i > 7
                         ? 'bg-amber-400'
                         : 'bg-teal-dark'
                       : 'bg-surface-container'

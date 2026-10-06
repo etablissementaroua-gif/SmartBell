@@ -3,6 +3,7 @@ import { TabType, BellSchedule, IntermissionTrack } from './types';
 import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { ToastContainer, ToastMessage } from './components/Toast';
 import { LiveDashboardView } from './features/live_dashboard/LiveDashboardView';
 import { BellSchedulerView } from './features/bell_scheduler/BellSchedulerView';
 import { IntermissionPlaylistView } from './features/intermission_playlist/IntermissionPlaylistView';
@@ -18,6 +19,21 @@ export const App: React.FC = () => {
   const [schedules, setSchedules] = useState<BellSchedule[]>([]);
   const [tracks, setTracks] = useState<IntermissionTrack[]>([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => {
+    const newToast: ToastMessage = {
+      id: `toast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      type,
+      message,
+      title,
+    };
+    setToasts((prev) => [...prev, newToast]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // 1. Initial Load from Supabase with Fallback
   useEffect(() => {
@@ -57,6 +73,11 @@ export const App: React.FC = () => {
   const handleToggleEmergencyMute = async () => {
     const nextState = !isEmergencyMuted;
     setIsEmergencyMuted(nextState);
+    if (nextState) {
+      addToast('error', 'تم تفعيل صمت الطوارئ العام وإيقاف كافة الأجراس والمكبرات فورياً.', 'صمت الطوارئ العام');
+    } else {
+      addToast('success', 'تم إلغاء صمت الطوارئ واستئناف عمل المنظومة بشكل طبيعي.', 'استئناف النظام');
+    }
     await supabaseService.setEmergencyMute(nextState);
   };
 
@@ -72,20 +93,36 @@ export const App: React.FC = () => {
     setSchedules((prev) =>
       prev.map((s) => (s.id === id ? { ...s, is_enabled: nextEnabled } : s))
     );
+    addToast('info', `تم ${nextEnabled ? 'تفعيل' : 'تعطيل'} موعد: ${sched.label}`, 'جدول الأجراس');
     await supabaseService.toggleBellSchedule(id, nextEnabled);
   };
 
   const handleAddSchedule = async (newSched: Omit<BellSchedule, 'id'>) => {
     const tempId = `sched-${Date.now()}`;
     setSchedules((prev) => [...prev, { ...newSched, id: tempId }]);
+    addToast('success', `تمت إضافة جرس جديد: ${newSched.label}`, 'إضافة جرس');
     await supabaseService.createBellSchedule(newSched);
     const fresh = await supabaseService.fetchBellSchedules();
     setSchedules(fresh);
   };
 
+  const handleUpdateSchedule = async (id: string, updates: Partial<BellSchedule>) => {
+    setSchedules((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+    );
+    addToast('success', 'تم تعديل بيانات موعد الجرس بنجاح.', 'تحديث الموعد');
+    await supabaseService.updateBellSchedule(id, updates);
+    const fresh = await supabaseService.fetchBellSchedules();
+    setSchedules(fresh);
+  };
+
   const handleDeleteSchedule = async (id: string) => {
+    const sched = schedules.find((s) => s.id === id);
     setSchedules((prev) => prev.filter((s) => s.id !== id));
+    addToast('warning', `تم حذف موعد الجرس: ${sched?.label || id}`, 'حذف جرس');
     await supabaseService.deleteBellSchedule(id);
+    const fresh = await supabaseService.fetchBellSchedules();
+    setSchedules(fresh);
   };
 
   const handleToggleTrack = async (id: string) => {
@@ -95,38 +132,55 @@ export const App: React.FC = () => {
     setTracks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, is_active: nextActive } : t))
     );
+    addToast('info', `تم ${nextActive ? 'تفعيل' : 'تعطيل'} الفقرة: ${track.title}`, 'قائمة الاستراحة');
     await supabaseService.toggleIntermissionTrack(id, nextActive);
   };
 
   const handleAddTrack = async (newTrack: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => {
+    addToast('success', `تمت إضافة الفقرة الإذاعية: ${newTrack.title}`, 'إضافة فقرة');
     await supabaseService.createIntermissionTrack(newTrack);
     const fresh = await supabaseService.fetchIntermissionTracks();
     setTracks(fresh);
   };
 
+  const handleUpdateTrack = async (id: string, updates: Partial<IntermissionTrack>) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+    );
+    addToast('success', 'تم تعديل بيانات الفقرة الإذاعية بنجاح.', 'تحديث الفقرة');
+    await supabaseService.updateIntermissionTrack(id, updates);
+    const fresh = await supabaseService.fetchIntermissionTracks();
+    setTracks(fresh);
+  };
+
   const handleDeleteTrack = async (id: string) => {
+    const track = tracks.find((t) => t.id === id);
     setTracks((prev) => prev.filter((t) => t.id !== id));
+    addToast('warning', `تم حذف الفقرة الإذاعية: ${track?.title || id}`, 'حذف فقرة');
     await supabaseService.deleteIntermissionTrack(id);
     const fresh = await supabaseService.fetchIntermissionTracks();
     setTracks(fresh);
   };
 
-  const handleMoveTrack = (id: string, direction: 'up' | 'down') => {
-    setTracks((prev) => {
-      const idx = prev.findIndex((t) => t.id === id);
-      if (idx < 0) return prev;
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
-      const newArr = [...prev];
-      const temp = newArr[idx];
-      newArr[idx] = newArr[targetIdx];
-      newArr[targetIdx] = temp;
-      return newArr;
-    });
+  const handleMoveTrack = async (id: string, direction: 'up' | 'down') => {
+    const idx = tracks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= tracks.length) return;
+    const newArr = [...tracks];
+    const temp = newArr[idx];
+    newArr[idx] = newArr[targetIdx];
+    newArr[targetIdx] = temp;
+    setTracks(newArr);
+    addToast('info', 'تم تعديل ترتيب بث الفقرة بنجاح.', 'ترتيب البث');
+    await supabaseService.reorderIntermissionTracks(newArr.map((t) => t.id));
   };
 
   return (
     <div className="min-h-screen bg-surface font-cairo text-on-surface antialiased" dir="rtl">
+      {/* Toast Notification Layer */}
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
+
       {/* Right Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -153,6 +207,7 @@ export const App: React.FC = () => {
               isEmergencyMuted={isEmergencyMuted}
               onToggleEmergencyMute={handleToggleEmergencyMute}
               onNavigateToTab={setCurrentTab}
+              onShowToast={addToast}
             />
           )}
 
@@ -161,7 +216,9 @@ export const App: React.FC = () => {
               schedules={schedules}
               onToggleSchedule={handleToggleSchedule}
               onAddSchedule={handleAddSchedule}
+              onUpdateSchedule={handleUpdateSchedule}
               onDeleteSchedule={handleDeleteSchedule}
+              onShowToast={addToast}
             />
           )}
 
@@ -171,20 +228,23 @@ export const App: React.FC = () => {
               onToggleTrack={handleToggleTrack}
               onMoveTrack={handleMoveTrack}
               onAddTrack={handleAddTrack}
+              onUpdateTrack={handleUpdateTrack}
               onDeleteTrack={handleDeleteTrack}
+              onShowToast={addToast}
             />
           )}
 
-          {currentTab === 'athan-settings' && <AdhanSettingsView />}
+          {currentTab === 'athan-settings' && <AdhanSettingsView onShowToast={addToast} />}
 
           {(currentTab === 'system-configuration' || currentTab === 'media-library') && (
             <SystemConfigurationView
               tracks={tracks}
               onDeleteTrack={handleDeleteTrack}
+              onShowToast={addToast}
             />
           )}
 
-          {currentTab === 'system-audit-logs' && <SystemAuditLogsView />}
+          {currentTab === 'system-audit-logs' && <SystemAuditLogsView onShowToast={addToast} />}
         </main>
       </div>
 

@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { supabaseService } from '../../core/supabaseService';
 import { SystemAuditLog } from '../../types';
 
-export const SystemAuditLogsView: React.FC = () => {
+interface SystemAuditLogsViewProps {
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
+}
+
+export const SystemAuditLogsView: React.FC<SystemAuditLogsViewProps> = ({ onShowToast }) => {
   const [logs, setLogs] = useState<SystemAuditLog[]>([]);
   const [filter, setFilter] = useState<string>('ALL');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -50,6 +54,10 @@ export const SystemAuditLogsView: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    if (onShowToast) {
+      onShowToast('success', 'تم تصدير سجل العمليات والتدقيق بتنسيق CSV بنجاح.', 'تصدير السجل');
+    }
   };
 
   return (

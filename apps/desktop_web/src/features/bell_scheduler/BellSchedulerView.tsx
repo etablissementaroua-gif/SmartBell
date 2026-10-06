@@ -1,26 +1,42 @@
 import React, { useState } from 'react';
 import { BellSchedule, BellType } from '../../types';
+import { supabaseService } from '../../core/supabaseService';
 
 interface BellSchedulerViewProps {
   schedules: BellSchedule[];
   onToggleSchedule: (id: string) => void;
   onAddSchedule: (schedule: Omit<BellSchedule, 'id'>) => void;
+  onUpdateSchedule?: (id: string, updates: Partial<BellSchedule>) => void;
   onDeleteSchedule: (id: string) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
   schedules,
   onToggleSchedule,
   onAddSchedule,
+  onUpdateSchedule,
   onDeleteSchedule,
+  onShowToast,
 }) => {
   const [activePreset, setActivePreset] = useState<string>('preset-1');
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [editingSchedule, setEditingSchedule] = useState<BellSchedule | null>(null);
+
+  // Add Form State
   const [newTime, setNewTime] = useState<string>('08:00');
   const [newType, setNewType] = useState<BellType>('ENTRY');
   const [newLabel, setNewLabel] = useState<string>('');
   const [newDuration, setNewDuration] = useState<number>(15);
   const [newZone, setNewZone] = useState<string>('ALL');
+
+  // Edit Form State
+  const [editLabel, setEditLabel] = useState<string>('');
+  const [editTime, setEditTime] = useState<string>('08:00');
+  const [editType, setEditType] = useState<BellType>('ENTRY');
+  const [editDuration, setEditDuration] = useState<number>(15);
+  const [editZone, setEditZone] = useState<string>('ALL');
+
   const [testingId, setTestingId] = useState<string | null>(null);
 
   const presets = [
@@ -29,8 +45,33 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
     { id: 'preset-3', name: 'جدول فترات الامتحانات الموحدة', active: activePreset === 'preset-3', count: 0 },
   ];
 
+  const handleOpenEdit = (sched: BellSchedule) => {
+    setEditingSchedule(sched);
+    setEditLabel(sched.label);
+    setEditTime(sched.bell_time);
+    setEditType(sched.bell_type);
+    setEditDuration(sched.duration_seconds || 15);
+    setEditZone(sched.target_zones?.[0] || 'ALL');
+  };
+
   const handleTestSound = (id: string) => {
+    const sched = schedules.find((s) => s.id === id);
     setTestingId(id);
+
+    // Audio chime feedback in browser
+    supabaseService.playSchoolBell();
+
+    // Trigger instant override test
+    supabaseService.triggerInstantOverride(
+      'INSTANT_ENTRY',
+      sched?.target_zones?.[0] || 'ALL',
+      { bell_name: sched?.label || 'اختبار الجرس', duration_seconds: 3, test_mode: true }
+    );
+
+    if (onShowToast) {
+      onShowToast('info', `جاري بث نغمة تجريبية لجرس: [${sched?.label || 'موعد محدد'}]`, 'اختبار الصوت');
+    }
+
     setTimeout(() => {
       setTestingId(null);
     }, 2500);
@@ -53,6 +94,23 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
 
     setNewLabel('');
     setShowAddModal(false);
+  };
+
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSchedule || !editLabel.trim()) return;
+
+    if (onUpdateSchedule) {
+      onUpdateSchedule(editingSchedule.id, {
+        label: editLabel.trim(),
+        bell_time: editTime,
+        bell_type: editType,
+        duration_seconds: editDuration,
+        target_zones: [editZone],
+      });
+    }
+
+    setEditingSchedule(null);
   };
 
   const getBellTypeBadge = (type: BellType) => {
@@ -239,6 +297,14 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                         </button>
                         <button
                           type="button"
+                          onClick={() => handleOpenEdit(schedule)}
+                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-teal-dark hover:bg-surface-container transition-colors"
+                          title="تعديل الموعد"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => onDeleteSchedule(schedule.id)}
                           className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-surface-container transition-colors"
                           title="حذف الموعد"
@@ -355,6 +421,112 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                   className="px-space-lg py-2 rounded-xl bg-teal-dark text-white text-xs font-bold hover:bg-secondary transition-colors shadow-sm"
                 >
                   حفظ وتثبيت الجرس
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Bell Schedule Modal */}
+      {editingSchedule && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-xl shadow-2xl border border-surface-container-high animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-dark text-2xl">edit_notifications</span>
+                <h3 className="font-bold text-base text-on-surface">تعديل موعد الجرس المدرسي</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSchedule(null)}
+                className="text-on-surface-variant hover:text-error p-1 rounded-lg"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitEdit} className="flex flex-col gap-space-md mt-space-md">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-on-surface-variant">اسم الجرس أو الحدث:</label>
+                <input
+                  type="text"
+                  required
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">توقيت الرنين:</label>
+                  <input
+                    type="time"
+                    required
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">نوع الجرس:</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as BellType)}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none cursor-pointer"
+                  >
+                    <option value="ENTRY">جرس دخول</option>
+                    <option value="EXIT">جرس انصراف</option>
+                    <option value="BREAK">استراحة / فسحة</option>
+                    <option value="WARNING">تنبيه عودة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">مدة الرنين بالثواني:</label>
+                  <input
+                    type="number"
+                    min="3"
+                    max="60"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(Number(e.target.value))}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">منطقة البث:</label>
+                  <select
+                    value={editZone}
+                    onChange={(e) => setEditZone(e.target.value)}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none cursor-pointer"
+                  >
+                    <option value="ALL">كافة أرجاء المدرسة</option>
+                    <option value="ZONE_A">الساحة والملاعب</option>
+                    <option value="ZONE_B">الممرات والمطعم</option>
+                    <option value="ZONE_C">الإدارة وقاعة الأساتذة</option>
+                    <option value="ZONE_D">المصلى المدرسي</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-space-md border-t border-surface-container">
+                <button
+                  type="button"
+                  onClick={() => setEditingSchedule(null)}
+                  className="px-space-md py-2 rounded-xl bg-surface-container text-on-surface text-xs font-bold hover:bg-surface-container-highest transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-space-lg py-2 rounded-xl bg-teal-dark text-white text-xs font-bold hover:bg-secondary transition-colors shadow-sm"
+                >
+                  حفظ التعديلات
                 </button>
               </div>
             </form>

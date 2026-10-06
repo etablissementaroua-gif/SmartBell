@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { IntermissionTrack } from '../../types';
+import { supabaseService } from '../../core/supabaseService';
 
 interface IntermissionPlaylistViewProps {
   tracks: IntermissionTrack[];
   onToggleTrack: (id: string) => void;
   onMoveTrack: (id: string, direction: 'up' | 'down') => void;
   onAddTrack?: (track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => void;
+  onUpdateTrack?: (id: string, updates: Partial<IntermissionTrack>) => void;
   onDeleteTrack?: (id: string) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> = ({
@@ -14,11 +17,14 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
   onToggleTrack,
   onMoveTrack,
   onAddTrack,
+  onUpdateTrack,
   onDeleteTrack,
+  onShowToast,
 }) => {
   const [activeSession, setActiveSession] = useState<'MORNING_BREAK' | 'NOON_BREAK'>('MORNING_BREAK');
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [editingTrack, setEditingTrack] = useState<IntermissionTrack | null>(null);
 
   // New Track Form State
   const [newTitle, setNewTitle] = useState<string>('');
@@ -27,13 +33,33 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
   const [newDuration, setNewDuration] = useState<number>(180);
   const [newUrl, setNewUrl] = useState<string>('https://cdn.smartbell.local/audio/sample.mp3');
 
+  // Edit Track Form State
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editCategory, setEditCategory] = useState<'PROVERB' | 'STORY' | 'NASHEED' | 'DUAA'>('NASHEED');
+  const [editSpeaker, setEditSpeaker] = useState<string>('');
+  const [editDuration, setEditDuration] = useState<number>(180);
+  const [editUrl, setEditUrl] = useState<string>('https://cdn.smartbell.local/audio/sample.mp3');
+
   const filteredTracks = tracks.filter((t) => t.session === activeSession);
 
-  const handleTogglePlay = (id: string) => {
-    if (playingTrackId === id) {
+  const handleOpenEdit = (track: IntermissionTrack) => {
+    setEditingTrack(track);
+    setEditTitle(track.title);
+    setEditCategory(track.category as any);
+    setEditSpeaker(track.speaker_or_artist || '');
+    setEditDuration(track.duration_seconds || 180);
+    setEditUrl(track.audio_url || 'https://cdn.smartbell.local/audio/sample.mp3');
+  };
+
+  const handleTogglePlay = (track: IntermissionTrack) => {
+    if (playingTrackId === track.id) {
       setPlayingTrackId(null);
+      if (onShowToast) onShowToast('info', 'تم إيقاف المعاينة الصوتية', 'معاينة الفقرة');
     } else {
-      setPlayingTrackId(id);
+      setPlayingTrackId(track.id);
+      supabaseService.playLocalBeep(523.25, 0.3);
+      setTimeout(() => supabaseService.playLocalBeep(659.25, 0.4), 220);
+      if (onShowToast) onShowToast('info', `جاري الاستماع للفقرة: ${track.title}`, 'معاينة الفقرة');
     }
   };
 
@@ -57,6 +83,23 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
     setNewTitle('');
     setNewSpeaker('');
     setShowAddModal(false);
+  };
+
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTrack || !editTitle.trim()) return;
+
+    if (onUpdateTrack) {
+      onUpdateTrack(editingTrack.id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        speaker_or_artist: editSpeaker.trim() || 'الإذاعة المدرسية',
+        duration_seconds: editDuration,
+        audio_url: editUrl.trim() || 'https://cdn.smartbell.local/audio/sample.mp3',
+      });
+    }
+
+    setEditingTrack(null);
   };
 
   const getCategoryBadge = (category: string) => {
@@ -184,7 +227,7 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
 
                   <button
                     type="button"
-                    onClick={() => handleTogglePlay(track.id)}
+                    onClick={() => handleTogglePlay(track)}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
                       playingTrackId === track.id
                         ? 'bg-teal-dark text-white ring-4 ring-teal-dark/30 animate-pulse'
@@ -245,6 +288,15 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
                         track.is_active ? '-translate-x-5' : 'translate-x-0'
                       }`}
                     />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(track)}
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-teal-dark hover:bg-surface-container transition-colors"
+                    title="تعديل الفقرة"
+                  >
+                    <span className="material-symbols-outlined text-lg">edit</span>
                   </button>
 
                   {onDeleteTrack && (
@@ -358,6 +410,105 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
                   className="px-space-lg py-2 rounded-xl bg-teal-dark text-white text-xs font-bold hover:bg-secondary transition-colors shadow-sm"
                 >
                   حفظ الفقرة في القاعدة
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Track Modal */}
+      {editingTrack && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-xl shadow-2xl border border-surface-container-high animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-dark text-2xl">edit_note</span>
+                <h3 className="font-bold text-base text-on-surface">تعديل الفقرة الإذاعية</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTrack(null)}
+                className="text-on-surface-variant hover:text-error p-1 rounded-lg"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitEdit} className="flex flex-col gap-space-md mt-space-md">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-on-surface-variant">عنوان الفقرة:</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">التصنيف:</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as any)}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none cursor-pointer"
+                  >
+                    <option value="NASHEED">نشيد تربوي</option>
+                    <option value="PROVERB">حكمة اليوم</option>
+                    <option value="STORY">قصة وعبرة</option>
+                    <option value="DUAA">أدعية وأذكار</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-on-surface-variant">المدة بالثواني:</label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="900"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(Number(e.target.value))}
+                    className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-on-surface-variant">المنشد أو المتحدث:</label>
+                <input
+                  type="text"
+                  value={editSpeaker}
+                  onChange={(e) => setEditSpeaker(e.target.value)}
+                  className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-on-surface-variant">رابط الملف الصوتي (URL):</label>
+                <input
+                  type="url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  className="bg-surface-container-low px-space-md py-2 rounded-xl text-xs text-on-surface border border-surface-container focus:ring-2 focus:ring-teal-dark outline-none font-mono text-left"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-space-md border-t border-surface-container">
+                <button
+                  type="button"
+                  onClick={() => setEditingTrack(null)}
+                  className="px-space-md py-2 rounded-xl bg-surface-container text-on-surface text-xs font-bold hover:bg-surface-container-highest transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-space-lg py-2 rounded-xl bg-teal-dark text-white text-xs font-bold hover:bg-secondary transition-colors shadow-sm"
+                >
+                  حفظ التعديلات
                 </button>
               </div>
             </form>
