@@ -178,7 +178,7 @@ export class SupabaseService {
         .from('adhan_settings')
         .select('*')
         .eq('id', 1)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         return initialAdhanConfig;
