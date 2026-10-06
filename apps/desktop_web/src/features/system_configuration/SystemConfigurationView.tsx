@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { IntermissionTrack } from '../../types';
 import { supabaseService } from '../../core/supabaseService';
 import { getSupabaseUrl, getSupabaseAnonKey, reconfigureSupabase, testSupabaseConnection } from '../../core/supabaseClient';
 
 interface SystemConfigurationViewProps {
   tracks?: IntermissionTrack[];
+  onAddTrack?: (track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => Promise<void>;
   onDeleteTrack?: (trackId: string) => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
 
 export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = ({
   tracks = [],
+  onAddTrack,
   onDeleteTrack,
   onShowToast,
 }) => {
@@ -20,6 +22,115 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [activeMediaFilter, setActiveMediaFilter] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
+
+  // Audio Upload & Drag and Drop State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
+
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const processAudioFiles = async (files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    let successCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress(`جاري معالجة: ${file.name} (${i + 1}/${files.length})...`);
+
+      const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(file.name);
+      if (!isAudio) {
+        if (onShowToast) onShowToast('warning', `الملف ${file.name} ليس ملفاً صوتياً مدعوماً.`, 'تنسيق غير مدعوم');
+        continue;
+      }
+
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        const audio = new Audio(objectUrl);
+
+        const durationSec = await new Promise<number>((resolve) => {
+          audio.onloadedmetadata = () => {
+            const sec = Math.round(audio.duration);
+            resolve(sec > 0 && isFinite(sec) ? sec : 120);
+          };
+          audio.onerror = () => resolve(120);
+          setTimeout(() => resolve(120), 2500);
+        });
+
+        const cleanTitle = file.name.replace(/\.[^/.]+$/, '').trim() || 'تسجيل صوتي مدرسي';
+        let assignedCategory: IntermissionTrack['category'] = 'NASHEED';
+        let assignedSession: IntermissionTrack['session'] = 'MORNING_BREAK';
+
+        if (activeMediaFilter.includes('أذكار') || activeMediaFilter.includes('تلاوات') || activeMediaFilter.includes('أدعية')) {
+          assignedCategory = 'DUAA';
+          assignedSession = 'NOON_BREAK';
+        } else if (activeMediaFilter.includes('قصص') || activeMediaFilter.includes('عبر')) {
+          assignedCategory = 'STORY';
+          assignedSession = 'MORNING_BREAK';
+        } else if (activeMediaFilter.includes('تنبيهات') || activeMediaFilter.includes('أجراس')) {
+          assignedCategory = 'PROVERB';
+          assignedSession = 'MORNING_BREAK';
+        }
+
+        if (onAddTrack) {
+          await onAddTrack({
+            title: cleanTitle,
+            category: assignedCategory,
+            session: assignedSession,
+            speaker_or_artist: 'تسجيل مدرسي محلي',
+            duration_seconds: durationSec,
+            audio_url: objectUrl,
+            play_order: tracks.length + successCount + 1,
+            is_active: true,
+          });
+        }
+        successCount++;
+      } catch (err: any) {
+        console.error('Error processing audio file:', err);
+        if (onShowToast) onShowToast('error', `تعذر معالجة الملف ${file.name}`, 'خطأ معالجة');
+      }
+    }
+
+    setIsUploading(false);
+    setUploadProgress('');
+    if (successCount > 0 && onShowToast) {
+      onShowToast('success', `تمت إضافة وحفظ ${successCount} ملفات صوتية بنجاح في المكتبة.`, 'اكتمال الرفع');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processAudioFiles(e.target.files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processAudioFiles(e.dataTransfer.files);
+    }
+  };
 
   // Supabase Cloud Connection State
   const [cloudUrl, setCloudUrl] = useState<string>(getSupabaseUrl());
@@ -207,23 +318,68 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           </div>
         </div>
 
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
         {/* Drag & Drop Upload Zone */}
-        <div className="border-2 border-dashed border-outline-variant hover:border-teal-dark transition-all rounded-2xl p-space-xl bg-surface-container-low flex flex-col items-center justify-center text-center cursor-pointer group">
-          <div className="w-16 h-16 rounded-full bg-surface-container-highest group-hover:bg-secondary-container flex items-center justify-center text-teal-dark mb-space-sm transition-colors shadow-inner">
-            <span className="material-symbols-outlined text-3xl">cloud_upload</span>
-          </div>
-          <h3 className="font-bold text-base text-on-surface">اسحب وأفلت الملفات الصوتية هنا أو استعرض جهازك</h3>
-          <p className="text-xs text-on-surface-variant max-w-lg mt-1 leading-relaxed">
-            يدعم النظام امتدادات الصوت الرقمية عالية النقاوة: MP3, WAV, FLAC بحد أقصى 50MB لكل ملف. يتم الفحص التلقائي لمستوى التردد والتطبيع الصوتي (Loudness Normalization).
-          </p>
-          <div className="flex items-center gap-space-sm mt-space-md">
-            <button
-              type="button"
-              className="px-space-lg py-space-sm bg-teal-dark text-white rounded-xl text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
-            >
-              استعراض الملفات من الكمبيوتر
-            </button>
-          </div>
+        <div
+          onClick={handleBrowseClick}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed transition-all rounded-2xl p-space-xl flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden select-none ${
+            isDragging
+              ? 'border-teal-dark bg-teal-dark/15 ring-4 ring-teal-dark/20 scale-[1.01]'
+              : 'border-outline-variant hover:border-teal-dark bg-surface-container-low hover:bg-surface-container'
+          }`}
+        >
+          {isUploading ? (
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="w-12 h-12 border-4 border-teal-dark/30 border-t-teal-dark rounded-full animate-spin mb-3"></span>
+              <span className="font-bold text-sm text-teal-dark">{uploadProgress || 'جاري معالجة وحفظ الملفات الصوتية...'}</span>
+              <span className="text-xs text-on-surface-variant mt-1">يتم استخراج مدة التسجيل وتطبيع الترددات الصوتية تلقائياً</span>
+            </div>
+          ) : (
+            <>
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center text-teal-dark mb-space-sm transition-all shadow-inner ${
+                  isDragging
+                    ? 'bg-teal-dark text-white scale-110 shadow-lg shadow-teal-dark/30'
+                    : 'bg-surface-container-highest group-hover:bg-secondary-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-3xl">
+                  {isDragging ? 'downloading' : 'cloud_upload'}
+                </span>
+              </div>
+              <h3 className="font-bold text-base text-on-surface">
+                {isDragging ? 'أفلت الملفات الصوتية هنا لبدء الإضافة فوراً' : 'اسحب وأفلت الملفات الصوتية هنا أو استعرض جهازك'}
+              </h3>
+              <p className="text-xs text-on-surface-variant max-w-lg mt-1 leading-relaxed">
+                يدعم النظام امتدادات الصوت الرقمية عالية النقاوة: MP3, WAV, FLAC, M4A, OGG بحد أقصى 50MB لكل ملف. يتم الفحص التلقائي لمستوى التردد والتطبيع الصوتي (Loudness Normalization).
+              </p>
+              <div className="flex items-center gap-space-sm mt-space-md">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBrowseClick();
+                  }}
+                  className="px-space-lg py-space-sm bg-teal-dark text-white rounded-xl text-xs font-bold shadow-md hover:bg-secondary transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">folder_open</span>
+                  <span>استعراض الملفات من الكمبيوتر</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Filter Category Chips & Search */}

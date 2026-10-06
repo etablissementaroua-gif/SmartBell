@@ -239,6 +239,7 @@ export const App: React.FC = () => {
           {(currentTab === 'system-configuration' || currentTab === 'media-library') && (
             <SystemConfigurationView
               tracks={tracks}
+              onAddTrack={handleAddTrack}
               onDeleteTrack={handleDeleteTrack}
               onShowToast={addToast}
             />
