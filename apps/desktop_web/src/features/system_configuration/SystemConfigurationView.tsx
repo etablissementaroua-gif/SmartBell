@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { IntermissionTrack } from '../../types';
 import { supabaseService } from '../../core/supabaseService';
+import { getSupabaseUrl, getSupabaseAnonKey, reconfigureSupabase, testSupabaseConnection } from '../../core/supabaseClient';
 
 interface SystemConfigurationViewProps {
   tracks?: IntermissionTrack[];
@@ -19,6 +20,45 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [activeMediaFilter, setActiveMediaFilter] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
+
+  // Supabase Cloud Connection State
+  const [cloudUrl, setCloudUrl] = useState<string>(getSupabaseUrl());
+  const [cloudKey, setCloudKey] = useState<string>(getSupabaseAnonKey());
+  const [showKey, setShowKey] = useState<boolean>(false);
+  const [isTestingConnection, setIsTestingConnection] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionMsg, setConnectionMsg] = useState<string>('');
+
+  const handleSaveAndTestConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+    setConnectionMsg('');
+    try {
+      const res = await testSupabaseConnection(cloudUrl, cloudKey);
+      if (res.success) {
+        reconfigureSupabase(cloudUrl, cloudKey);
+        setConnectionStatus('success');
+        setConnectionMsg('تم الاتصال بالسحابة بنجاح والتحقق من صحة المفتاح.');
+        if (onShowToast) {
+          onShowToast('success', 'تم الاتصال بقاعدة بيانات Supabase وحفظ المفتاح بنجاح.', 'الربط السحابي');
+        }
+      } else {
+        setConnectionStatus('error');
+        setConnectionMsg(`فشل الاتصال: ${res.message}`);
+        if (onShowToast) {
+          onShowToast('error', `تعذر الاتصال بقاعدة البيانات: ${res.message}`, 'خطأ في الربط السحابي');
+        }
+      }
+    } catch (e: any) {
+      setConnectionStatus('error');
+      setConnectionMsg('حدث خطأ أثناء الاتصال بالخادم السحابي.');
+      if (onShowToast) {
+        onShowToast('error', 'حدث خطأ أثناء فحص الاتصال بالسحابة.', 'خطأ غير متوقع');
+      }
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   const handlePingTest = async () => {
     setIsPingTesting(true);
@@ -343,7 +383,158 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
         </div>
       </section>
 
-      {/* SECTION 2: Mobile Controller APK & QR Code Download Section */}
+      {/* SECTION 2: Supabase Cloud Credentials & Connection Management */}
+      <section className="bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-secondary/40 relative overflow-hidden flex flex-col gap-space-lg">
+        {/* Subtle Accent Glow */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Section Header & Status Badge */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md border-b border-surface-container pb-space-md">
+          <div className="flex items-center gap-space-md">
+            <div className="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center text-teal-dark shadow-sm flex-shrink-0">
+              <span className="material-symbols-outlined text-2xl">cloud_sync</span>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-space-sm flex-wrap">
+                <h2 className="text-lg md:text-xl font-bold text-on-surface">إعدادات الربط السحابي بقاعدة البيانات (Supabase Cloud)</h2>
+                {connectionStatus === 'success' && (
+                  <span className="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    متصل بالسحابة بنجاح
+                  </span>
+                )}
+                {connectionStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-error-container text-error text-xs font-bold border border-error/30">
+                    <span className="w-2 h-2 rounded-full bg-error"></span>
+                    فشل الاتصال - خطأ في المفتاح
+                  </span>
+                )}
+                {connectionStatus === 'idle' && (
+                  <span className="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-xs font-bold">
+                    <span className="w-2 h-2 rounded-full bg-teal-dark"></span>
+                    الربط السحابي مفعل
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                إدارة مفتاح الوصول العام (Anon Public Key) ورابط المشروع لضمان التزامن اللحظي للأجراس والتحكم الصوتي.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href="https://supabase.com/dashboard/project/mnlmilyymnrhkuulcpfw/settings/api"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-space-md py-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface text-xs font-bold transition-all border border-surface-container w-fit"
+          >
+            <span className="material-symbols-outlined text-sm text-teal-dark">open_in_new</span>
+            <span>فتح لوحة مفاتيح Supabase</span>
+          </a>
+        </div>
+
+        {/* Form Inputs Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+          {/* Project URL */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-teal-dark">link</span>
+              <span>رابط مشروع Supabase (Project URL)</span>
+            </label>
+            <input
+              type="text"
+              value={cloudUrl}
+              onChange={(e) => setCloudUrl(e.target.value)}
+              placeholder="https://your-project.supabase.co"
+              className="w-full px-space-md py-2.5 rounded-xl bg-surface-container-low border border-surface-container focus:border-teal-dark focus:ring-1 focus:ring-teal-dark text-xs font-mono text-on-surface outline-none transition-all"
+              dir="ltr"
+            />
+            <span className="text-[11px] text-on-surface-variant">الخادم السحابي المستضيف لجداول الأجراس والأوامر اللحظية.</span>
+          </div>
+
+          {/* Anon Public Key */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-on-surface flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-teal-dark">key</span>
+                <span>مفتاح الوصول العام (Anon Public Key)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="text-xs text-teal-dark hover:underline flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {showKey ? 'visibility_off' : 'visibility'}
+                </span>
+                <span>{showKey ? 'إخفاء' : 'إظهار المفتاح'}</span>
+              </button>
+            </label>
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={cloudKey}
+                onChange={(e) => setCloudKey(e.target.value)}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                className="w-full px-space-md py-2.5 rounded-xl bg-surface-container-low border border-surface-container focus:border-teal-dark focus:ring-1 focus:ring-teal-dark text-xs font-mono text-on-surface outline-none transition-all"
+                dir="ltr"
+              />
+            </div>
+            <span className="text-[11px] text-on-surface-variant">مفتاح JWT الآمن للاستعلامات والاشتراك في قنوات Realtime.</span>
+          </div>
+        </div>
+
+        {/* Connection Message Banner */}
+        {connectionMsg && (
+          <div className={`p-space-sm px-space-md rounded-xl text-xs font-medium border flex items-center gap-2 ${
+            connectionStatus === 'success' 
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' 
+              : 'bg-error-container text-error border-error/30'
+          }`}>
+            <span className="material-symbols-outlined text-base">
+              {connectionStatus === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span>{connectionMsg}</span>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between gap-space-md flex-wrap pt-space-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setCloudUrl('https://mnlmilyymnrhkuulcpfw.supabase.co');
+              setCloudKey('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ubG1pbHl5bW5yaGt1dWxjcGZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNTQ4MDEsImV4cCI6MjEwNjczMDgwMX0.xwTWg19h-eLzL7tVpbrPQCiEYYj6jCEhO1Cgk4SzGqk');
+              if (onShowToast) onShowToast('info', 'تم استرجاع الإعدادات الافتراضية الرسمية.', 'استعادة');
+            }}
+            className="text-xs text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">restart_alt</span>
+            <span>استعادة الإعدادات الافتراضية</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveAndTestConnection}
+            disabled={isTestingConnection || !cloudKey.trim()}
+            className="flex items-center gap-2 px-space-xl py-2.5 bg-teal-dark hover:bg-secondary text-white font-bold text-xs rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isTestingConnection ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>جاري اختبار الاتصال وحفظ المفتاح...</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-base">bolt</span>
+                <span>اختبار وحفظ الاتصال بالسحابة</span>
+              </>
+            )}
+          </button>
+        </div>
+      </section>
+
+      {/* SECTION 3: Mobile Controller APK & QR Code Download Section */}
       <section className="bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-teal-dark/40 relative overflow-hidden flex flex-col gap-space-lg">
         {/* Glowing Background Accent */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-teal-dark/5 rounded-full blur-3xl pointer-events-none"></div>
