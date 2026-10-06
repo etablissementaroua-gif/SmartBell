@@ -475,9 +475,9 @@ export class SupabaseService {
 
   public async createIntermissionTrack(
     track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>
-  ): Promise<boolean> {
+  ): Promise<IntermissionTrack | null> {
     try {
-      const { error } = await supabase.from('intermission_tracks').insert({
+      const { data, error } = await supabase.from('intermission_tracks').insert({
         session: track.session,
         category: track.category,
         title: track.title,
@@ -486,16 +486,16 @@ export class SupabaseService {
         audio_url: track.audio_url || 'https://cdn.smartbell.local/audio/custom_track.mp3',
         play_order: track.play_order || 1,
         is_active: track.is_active ?? true,
-      });
+      }).select().single();
 
       if (error) {
         console.error('❌ [SupabaseService] Error creating intermission track:', error);
-        return false;
+        return null;
       }
-      return true;
+      return data as IntermissionTrack;
     } catch (err) {
       console.error('❌ [SupabaseService] Exception creating intermission track:', err);
-      return false;
+      return null;
     }
   }
 

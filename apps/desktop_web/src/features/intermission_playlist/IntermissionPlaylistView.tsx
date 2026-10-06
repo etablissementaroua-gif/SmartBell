@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IntermissionTrack } from '../../types';
-import { supabaseService } from '../../core/supabaseService';
+import { audioPlayerService } from '../../core/audioPlayerService';
 
 interface IntermissionPlaylistViewProps {
   tracks: IntermissionTrack[];
@@ -51,14 +51,25 @@ export const IntermissionPlaylistView: React.FC<IntermissionPlaylistViewProps> =
     setEditUrl(track.audio_url || 'https://cdn.smartbell.local/audio/sample.mp3');
   };
 
+  // Subscribe to audio player state
+  useEffect(() => {
+    const unsub = audioPlayerService.subscribe((state) => {
+      if (state.isPlaying && state.currentTrack) {
+        setPlayingTrackId(state.currentTrack.id);
+      } else {
+        setPlayingTrackId(null);
+      }
+    });
+    return unsub;
+  }, []);
+
   const handleTogglePlay = (track: IntermissionTrack) => {
-    if (playingTrackId === track.id) {
-      setPlayingTrackId(null);
-      if (onShowToast) onShowToast('info', 'تم إيقاف المعاينة الصوتية', 'معاينة الفقرة');
+    const currentState = audioPlayerService.getCurrentState();
+    if (currentState.isPlaying && currentState.currentTrack?.id === track.id) {
+      audioPlayerService.pause();
+      if (onShowToast) onShowToast('info', 'تم إيقاف الاستماع', 'معاينة الفقرة');
     } else {
-      setPlayingTrackId(track.id);
-      supabaseService.playLocalBeep(523.25, 0.3);
-      setTimeout(() => supabaseService.playLocalBeep(659.25, 0.4), 220);
+      audioPlayerService.playTrack(track);
       if (onShowToast) onShowToast('info', `جاري الاستماع للفقرة: ${track.title}`, 'معاينة الفقرة');
     }
   };

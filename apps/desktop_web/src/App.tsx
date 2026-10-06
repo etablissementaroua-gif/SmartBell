@@ -11,6 +11,7 @@ import { AdhanSettingsView } from './features/adhan_settings/AdhanSettingsView';
 import { SystemConfigurationView } from './features/system_configuration/SystemConfigurationView';
 import { SystemAuditLogsView } from './features/system_audit_logs/SystemAuditLogsView';
 import { LoginModal } from './features/authentication/LoginModal';
+import { audioPlayerService } from './core/audioPlayerService';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('live-control-dashboard');
@@ -136,11 +137,19 @@ export const App: React.FC = () => {
     await supabaseService.toggleIntermissionTrack(id, nextActive);
   };
 
-  const handleAddTrack = async (newTrack: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => {
+  const handleAddTrack = async (
+    newTrack: Omit<IntermissionTrack, 'id' | 'duration_formatted'>,
+    fileBlob?: Blob
+  ): Promise<string | undefined> => {
     addToast('success', `تمت إضافة الفقرة الإذاعية: ${newTrack.title}`, 'إضافة فقرة');
-    await supabaseService.createIntermissionTrack(newTrack);
+    const created = await supabaseService.createIntermissionTrack(newTrack);
+    if (created && created.id && fileBlob) {
+      await audioPlayerService.saveAudioBlob(created.id, fileBlob);
+      await audioPlayerService.saveAudioBlob(created.title, fileBlob);
+    }
     const fresh = await supabaseService.fetchIntermissionTracks();
     setTracks(fresh);
+    return created?.id;
   };
 
   const handleUpdateTrack = async (id: string, updates: Partial<IntermissionTrack>) => {

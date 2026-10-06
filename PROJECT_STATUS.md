@@ -4,6 +4,7 @@
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
+- **الإصدار النشط:** v2.4.3 (Real Audio Engine & IndexedDB Persistence)
 
 ---
 
@@ -16,7 +17,20 @@
   - الحفاظ التام على أمان وسياسات RLS ومناطق الصوت الأربعة وإعدادات مواقيت الأذان لمراكش.
   - إدخال جدول الحصص الرسمي وباقة الفقرات الإذاعية وتوثيق إطلاق الإنتاج في سجل التدقيق.
 
-### 2. لوحة التحكم المكتبية (`apps/desktop_web/`) - Production Mode (Live Connected v2.4.2)
+### 2. محرك الصوت الموحد والتخزين الدائم (`apps/desktop_web/src/core/audioPlayerService.ts`) - v2.4.3
+- **محرك مشغل الصوت الحقيقي الموحد (Unified Real Audio Player Engine):**
+  - بناء كائن موحد (`AudioPlayerService`) لإدارة تشغيل الصوت عبر مكبرات الصوت باستخدام عنصر الصوت الأصيل `HTMLAudioElement`.
+  - ربط أزرار التشغيل والإيقاف المؤقت والمعاينة في كافة الواجهات (`NowPlayingCard`, `IntermissionPlaylistView`, `SystemConfigurationView`).
+  - مزامنة شريط التقدم، الدقائق المنقضية والمتبقية، وحالات التشغيل/التوقف في الوقت الفعلي عبر نمط الاشتراك (Subscription Pattern).
+- **التخزين الدائم لملفات الصوت في المتصفح (IndexedDB Audio Blobs Persistence):**
+  - إنشاء قاعدة بيانات `IndexedDB` محلية باسم `smartbell_media_db` بجدول `audio_blobs` لحفظ الملفات الصوتية المرفوعة بصيغتها الأصلية.
+  - حفظ الملف الصوتي تلقائياً فور رفعه وسحبه، واسترجاعه الدائم عند التشغيل حتى بعد إعادة تحميل الصفحة أو إغلاق المتصفح تماماً.
+- **نظام العزف اللحني التركيبي الاحتياطي (Melodic Synthesizer Fallback):**
+  - في حال كان رابط الملف الصوتي منتهياً أو غير متاح عبر الشبكة، يقوم النظام تلقائياً بتوليد وعزف نشيد مدرسي لحني نقي ودافئ (10 نغمات تعليمية) عبر Web Audio API، لضمان سماع الصوت في مكبرات الصوت دائماً دون أي انقطاع أو أخطاء صامتة.
+- **التحكم بمستوى الصوت الشامل والساحة:**
+  - ربط مزلاق الصوت الرئيسي (Master Volume) ومستوى صوت الساحة (Yard Volume) مباشرة بمستوى صوت مكبرات الصوت الفعلي.
+
+### 3. لوحة التحكم المكتبية (`apps/desktop_web/`) - Production Mode (Live Connected v2.4.3)
 - **معالجة وتفعيل الربط السحابي الحقيقي مع Supabase:**
   - تفعيل مفتاح `anon` `public` الرسمي الخاص بمشروع `mnlmilyymnrhkuulcpfw` لحل مشكلة `401 Unauthorized` نهائياً.
   - إضافة **بطاقة إدارة الربط السحابي (Supabase Cloud Credentials)** في صفحة الإعدادات مع إمكانية فحص وحفظ المفتاح ديناميكياً وتخزينه في `localStorage` وإعادة تشغيل عميل Supabase Realtime دون إعادة تحميل الصفحة.

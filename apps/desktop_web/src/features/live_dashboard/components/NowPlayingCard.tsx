@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IntermissionTrack } from '../../../types';
 import { supabaseService } from '../../../core/supabaseService';
+import { audioPlayerService } from '../../../core/audioPlayerService';
 
 interface NowPlayingCardProps {
   tracks: IntermissionTrack[];
@@ -22,19 +23,38 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   const totalDuration = currentTrack ? (currentTrack.duration_seconds || 120) : 0;
 
   useEffect(() => {
+    const unsub = audioPlayerService.subscribe((state) => {
+      setIsPlaying(state.isPlaying);
+      if (state.currentTime > 0) {
+        setProgress(state.currentTime);
+      }
+      if (state.currentTrack) {
+        const foundIdx = tracks.findIndex((t) => t.id === state.currentTrack?.id);
+        if (foundIdx >= 0) {
+          setCurrentTrackIndex(foundIdx);
+        }
+      }
+    });
+    return unsub;
+  }, [tracks]);
+
+  useEffect(() => {
     let timer: number;
     if (isPlaying && hasTracks && totalDuration > 0) {
       timer = window.setInterval(() => {
         setProgress((prev) => {
           if (prev >= totalDuration) {
             if (isRepeat) {
+              audioPlayerService.seek(0);
               return 0;
             } else if (isShuffle && tracks.length > 1) {
               const nextRnd = Math.floor(Math.random() * tracks.length);
               setCurrentTrackIndex(nextRnd);
+              audioPlayerService.playTrack(tracks[nextRnd]);
               return 0;
             } else if (currentTrackIndex < tracks.length - 1) {
               setCurrentTrackIndex((c) => c + 1);
+              audioPlayerService.playTrack(tracks[currentTrackIndex + 1]);
               return 0;
             }
             return 0;
@@ -47,7 +67,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
       setProgress(0);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, hasTracks, totalDuration, isRepeat, isShuffle, tracks.length, currentTrackIndex]);
+  }, [isPlaying, hasTracks, totalDuration, isRepeat, isShuffle, tracks, currentTrackIndex]);
 
   const formatSeconds = (sec: number) => {
     const mins = Math.floor(sec / 60);
@@ -76,8 +96,13 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   const handleTogglePlay = () => {
     if (!hasTracks) return;
     const nextPlaying = !isPlaying;
-    setIsPlaying(nextPlaying);
-    supabaseService.playLocalBeep(nextPlaying ? 523 : 392, 0.15);
+    if (nextPlaying) {
+      if (currentTrack) {
+        audioPlayerService.playTrack(currentTrack);
+      }
+    } else {
+      audioPlayerService.pause();
+    }
     supabaseService.sendMediaControl(nextPlaying ? 'PLAY' : 'PAUSE', currentTrack);
     if (onShowToast) {
       onShowToast('info', nextPlaying ? `جاري بث: ${currentTrack?.title || 'الفقرة الإذاعية'}` : 'تم إيقاف البث الإذاعي مؤقتاً', 'المشغل الصوتي');
@@ -88,8 +113,10 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
     const prevIdx = Math.max(0, currentTrackIndex - 1);
     setCurrentTrackIndex(prevIdx);
     setProgress(0);
-    supabaseService.playLocalBeep(650, 0.1);
     if (tracks[prevIdx]) {
+      if (isPlaying) {
+        audioPlayerService.playTrack(tracks[prevIdx]);
+      }
       supabaseService.sendMediaControl('PREV', tracks[prevIdx]);
       if (onShowToast) {
         onShowToast('info', `تم الانتقال إلى: ${tracks[prevIdx].title}`, 'المقطع السابق');
@@ -101,8 +128,10 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
     const nextIdx = Math.min(tracks.length - 1, currentTrackIndex + 1);
     setCurrentTrackIndex(nextIdx);
     setProgress(0);
-    supabaseService.playLocalBeep(750, 0.1);
     if (tracks[nextIdx]) {
+      if (isPlaying) {
+        audioPlayerService.playTrack(tracks[nextIdx]);
+      }
       supabaseService.sendMediaControl('NEXT', tracks[nextIdx]);
       if (onShowToast) {
         onShowToast('info', `تم الانتقال إلى: ${tracks[nextIdx].title}`, 'المقطع التالي');
@@ -113,6 +142,11 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
   const handleYardMute = () => {
     const nextMuted = !isYardMuted;
     setIsYardMuted(nextMuted);
+    if (nextMuted) {
+      audioPlayerService.setVolume(0);
+    } else {
+      audioPlayerService.setVolume(yardVolume);
+    }
     supabaseService.toggleZoneMute('ZONE_A', nextMuted);
     if (onShowToast) {
       onShowToast(nextMuted ? 'warning' : 'success', nextMuted ? 'تم كتم سماعات الساحة الخارجية' : 'تم إلغاء كتم سماعات الساحة', 'تحكم الساحة');
@@ -121,6 +155,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
 
   const handleYardVolumeChange = (newVol: number) => {
     setYardVolume(newVol);
+    audioPlayerService.setVolume(newVol);
     supabaseService.updateZoneVolume('ZONE_A', newVol);
   };
 

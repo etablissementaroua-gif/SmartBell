@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { IntermissionTrack } from '../../types';
 import { supabaseService } from '../../core/supabaseService';
 import { getSupabaseUrl, getSupabaseAnonKey, reconfigureSupabase, testSupabaseConnection } from '../../core/supabaseClient';
+import { audioPlayerService } from '../../core/audioPlayerService';
 
 interface SystemConfigurationViewProps {
   tracks?: IntermissionTrack[];
-  onAddTrack?: (track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>) => Promise<void>;
+  onAddTrack?: (track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>, fileBlob?: Blob) => Promise<string | undefined>;
   onDeleteTrack?: (trackId: string) => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => void;
 }
@@ -22,6 +23,17 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [activeMediaFilter, setActiveMediaFilter] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = audioPlayerService.subscribe((state) => {
+      if (state.isPlaying && state.currentTrack) {
+        setPlayingMediaId(state.currentTrack.id);
+      } else {
+        setPlayingMediaId(null);
+      }
+    });
+    return unsub;
+  }, []);
 
   // Audio Upload & Drag and Drop State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +91,9 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           assignedSession = 'MORNING_BREAK';
         }
 
+        let createdId: string | undefined;
         if (onAddTrack) {
-          await onAddTrack({
+          createdId = await onAddTrack({
             title: cleanTitle,
             category: assignedCategory,
             session: assignedSession,
@@ -89,8 +102,12 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
             audio_url: objectUrl,
             play_order: tracks.length + successCount + 1,
             is_active: true,
-          });
+          }, file);
         }
+        if (createdId) {
+          await audioPlayerService.saveAudioBlob(createdId, file);
+        }
+        await audioPlayerService.saveAudioBlob(cleanTitle, file);
         successCount++;
       } catch (err: any) {
         console.error('Error processing audio file:', err);
@@ -192,16 +209,19 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
 
   const handleMasterVolumeChange = (vol: number) => {
     setMasterVolume(vol);
+    audioPlayerService.setVolume(vol);
     supabaseService.updateMasterVolume(vol);
   };
 
   const handlePreviewMedia = (track: IntermissionTrack) => {
-    if (playingMediaId === track.id) {
-      setPlayingMediaId(null);
+    const currentState = audioPlayerService.getCurrentState();
+    if (currentState.isPlaying && currentState.currentTrack?.id === track.id) {
+      audioPlayerService.pause();
+      if (onShowToast) {
+        onShowToast('info', `تم إيقاف الاستماع للملف: ${track.title}`, 'معاينة الملف');
+      }
     } else {
-      setPlayingMediaId(track.id);
-      supabaseService.playLocalBeep(523.25, 0.4);
-      setTimeout(() => supabaseService.playLocalBeep(659.25, 0.4), 220);
+      audioPlayerService.playTrack(track);
       if (onShowToast) {
         onShowToast('info', `جاري الاستماع للملف: ${track.title}`, 'معاينة الملف');
       }
