@@ -4,13 +4,21 @@
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
-- **الإصدار النشط:** v2.6.0 (Full Mobile Responsiveness, Slide Drawer, Bottom Nav & PWA Support)
+- **الإصدار النشط:** v2.6.1 (Authentic Release APK & Android Package Parse Error Resolution)
 
 ---
 
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
 
-### 1. ملاءمة الهواتف الذكية وتطبيق الويب التقدمي (Mobile-First UI & PWA Architecture) - v2.6.0
+### 1. حل مشكلة تحليل حزمة الأندرويد وبناء الحزمة الرسمية (Authentic Release APK) - v2.6.1
+- **تشخيص ومعالجة خطأ "حدث مشكل أثناء تحليل الحزمة" (Parse Error):**
+  - الكشف عن أن ملف `smartbell-controller.apk` السابق كان ملفاً وهمياً (Dummy) بحجم 1KB فقط مما كان يتسبب في فشل أندرويد الفوري في قراءة الحزمة.
+  - إصلاح تعارضات مكتبات Dart في `apps/mobile_app` (`record_platform_interface`).
+  - تنظيف إعدادات Gradle المزدوجة وضبط `compileSdk = 36` في `android/app/build.gradle.kts`.
+  - تجميع وبناء حزمة أندرويد حقيقية وموقعة بنجاح (`app-release.apk` بحجم 50.8MB).
+  - توفير الحزمة مباشرة في مسار التحميل وتحديث بيئة الإنتاج على Firebase Hosting.
+
+### 2. ملاءمة الهواتف الذكية وتطبيق الويب التقدمي (Mobile-First UI & PWA Architecture) - v2.6.0
 - **إعادة هيكلة العرض والشبكة المتجاوبة بالكامل (Responsive Mobile Layout):**
   - تصحيح إزاحات العرض الثابتة الخاصة بالشاشات العريضة (`pr-72` و `right-72`) وتحويلها إلى تدرج متجاوب سلس (`pr-0 lg:pr-72` و `right-0 lg:right-72`).
   - تحرير مساحة العرض على شاشات الهواتف المحمولة وتجنب ضغط البطاقات أو تكديس النصوص في شريط عمودي ضيق.
