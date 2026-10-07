@@ -1,7 +1,7 @@
 name: smartbell_controller
 description: "SmartBell Controller - Mobile Remote Control Application for School Radio & Bells"
 publish_to: 'none'
-version: 2.7.0+3
+version: 2.7.1+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

@@ -320,6 +320,61 @@ class AudioPlayerService {
     }, 1000);
   }
 
+  // --- 2.2 Adhan Chime Execution (Priority 2 Override) ---
+  public playAdhanChime(adhanTitle: string = 'أذان الصلاة'): void {
+    try {
+      this.unlockAudio();
+      this.stop(); // Priority 2: Interrupt ongoing radio music immediately
+      this.isBellRinging = true;
+      this.bellSecondsRemaining = 180; // Standard 3-minute Adhan duration
+      this.chainedSessionName = `🕌 ${adhanTitle}`;
+      this.isPlaying = true;
+      this.notifyListeners();
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this.sharedAudioCtx || this.sharedAudioCtx.state === 'closed') {
+        this.sharedAudioCtx = new AudioCtx();
+      }
+      const ctx = this.sharedAudioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      // Adhan vocal resonance harmonic pattern (Maqam Hijaz)
+      const hijazFrequencies = [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 554.37, 587.33];
+      const now = ctx.currentTime;
+      hijazFrequencies.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.45);
+        gain.gain.setValueAtTime(0, now + idx * 0.45);
+        gain.gain.linearRampToValueAtTime(0.25, now + idx * 0.45 + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.45 + 0.7);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.45);
+        osc.stop(now + idx * 0.45 + 0.8);
+      });
+
+      if (this.bellTimer) clearInterval(this.bellTimer);
+      this.bellTimer = setInterval(() => {
+        this.bellSecondsRemaining -= 1;
+        this.notifyListeners();
+        if (this.bellSecondsRemaining <= 0) {
+          clearInterval(this.bellTimer);
+          this.bellTimer = null;
+          this.isBellRinging = false;
+          this.isPlaying = false;
+          this.notifyListeners();
+        }
+      }, 1000);
+    } catch (e) {
+      console.warn('Error playing adhan chime:', e);
+    }
+  }
+
   // --- 3. School Bell Audio Chime Synthesizer ---
   public playSchoolBellChime(type: BellType = 'ENTRY', durationSec: number = 5): void {
     try {

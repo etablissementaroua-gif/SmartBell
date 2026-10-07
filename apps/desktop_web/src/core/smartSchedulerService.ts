@@ -157,8 +157,22 @@ class SmartSchedulerService {
     // 1. Unlock browser audio
     audioPlayerService.unlockAudio();
 
-    // 2. Execute audio behavior based on Action Type
-    if (actionType === 'DIRECT_AUDIO') {
+    // 2. Execute audio behavior based on Action Type / Athan
+    if (schedule.bell_type === 'ATHAN' || schedule.label.includes('أذان')) {
+      audioPlayerService.stop(); // Priority 2: Auto-interrupt background audio
+      if (actionType === 'DIRECT_AUDIO') {
+        const targetTrack = this.tracks.find((t) => t.id === mediaId) ||
+          this.tracks.find((t) => (schedule.media_title || meta.media_title) && t.title.includes(schedule.media_title || meta.media_title || '')) ||
+          this.tracks.find((t) => t.title.includes('أذان') || t.title.includes('صلاة'));
+        if (targetTrack) {
+          audioPlayerService.playTrack(targetTrack);
+        } else {
+          audioPlayerService.playAdhanChime(schedule.label);
+        }
+      } else {
+        audioPlayerService.playAdhanChime(schedule.label);
+      }
+    } else if (actionType === 'DIRECT_AUDIO') {
       const targetTrack = this.tracks.find((t) => t.id === mediaId) ||
         this.tracks.find((t) => (schedule.media_title || meta.media_title) && t.title.includes(schedule.media_title || meta.media_title || '')) ||
         this.tracks[0];

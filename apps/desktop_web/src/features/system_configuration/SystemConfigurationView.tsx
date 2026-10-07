@@ -710,8 +710,8 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
         </div>
       </section>
 
-      {/* SECTION 3: Mobile Controller APK & QR Code Download Section */}
-      <section className="bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-teal-dark/40 relative overflow-hidden flex flex-col gap-space-lg">
+      {/* SECTION 3: Mobile Controller APK & QR Code Download Section (Desktop only to declutter mobile UI) */}
+      <section className="hidden md:flex bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-teal-dark/40 relative overflow-hidden flex-col gap-space-lg">
         {/* Glowing Background Accent */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-teal-dark/5 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -725,7 +725,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
               <div className="flex items-center gap-space-sm flex-wrap">
                 <h2 className="text-lg md:text-xl font-bold text-on-surface">تطبيق الهاتف الذكي للمشرف (SmartBell Controller)</h2>
                 <span className="px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-xs font-bold font-mono">
-                  v2.4.0 Production
+                  v2.7.1 Production
                 </span>
                 <span className="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-bold">
                   Android APK

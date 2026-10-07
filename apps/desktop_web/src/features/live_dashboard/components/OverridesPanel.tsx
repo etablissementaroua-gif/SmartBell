@@ -26,6 +26,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
   ]);
   const [countdown, setCountdown] = useState<{ bell: string; secondsLeft: number } | null>(null);
   const [vuLevel, setVuLevel] = useState<number>(0);
+  const [showInstantBells, setShowInstantBells] = useState<boolean>(false);
 
   // Dynamic VU Meter animation while mic is active
   useEffect(() => {
@@ -155,128 +156,141 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
         </button>
       </div>
 
-      {/* 2. Instant Overrides (أجراس التجاوز الفوري) */}
-      <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
-        <div className="flex items-center justify-between">
+      {/* 2. Instant Overrides (أجراس التجاوز الفوري - قابلة للطي لتخفيف واجهة الهاتف) */}
+      <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm border border-surface-container-high/60 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setShowInstantBells(!showInstantBells)}
+          className="flex items-center justify-between w-full text-right p-1 hover:bg-surface-container-low rounded-lg transition-colors"
+        >
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-dark text-xl">notification_important</span>
-            <h4 className="font-bold text-[15px] text-on-surface">أجراس التجاوز الفوري</h4>
-          </div>
-          <span className="text-[11px] font-bold text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full">
-            تجاوز يدوي مباشر
-          </span>
-        </div>
-
-        {/* 3 Chimes Cards */}
-        <div className="flex flex-col gap-2.5">
-          {/* Bell 1: Instant Entry */}
-          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-            countdown?.bell === 'جرس الدخول المباشر'
-              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
-              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
-          }`}>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handlePlayBell('جرس الدخول المباشر', 20, 'INSTANT_ENTRY')}
-                disabled={countdown !== null}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  countdown?.bell === 'جرس الدخول المباشر'
-                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
-                    : 'bg-primary text-on-primary hover:bg-teal-dark disabled:opacity-40'
-                }`}
-                title="رنين فوري"
-              >
-                <span className="material-symbols-outlined text-xl">
-                  {countdown?.bell === 'جرس الدخول المباشر' ? 'notifications_active' : 'play_arrow'}
-                </span>
-              </button>
-              <div className="flex flex-col">
-                <span className="font-bold text-[13px]">جرس الدخول المباشر</span>
-                <span className="text-[11px] opacity-80">رنين الصعود للطابور والاصطفاف المدرسي</span>
-              </div>
+            <div className="flex flex-col">
+              <h4 className="font-bold text-[14px] text-on-surface">أجراس التجاوز اليدوي المباشر</h4>
+              <span className="text-[10px] text-on-surface-variant">رنين فوري لدخول الطلاب والانصراف وتنبيه الحصة</span>
             </div>
-            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold text-teal-dark bg-secondary-fixed/50 px-2 py-0.5 rounded-full">
+              {showInstantBells ? 'إخفاء الأزرار' : 'إظهار الأزرار'}
+            </span>
+            <span className="material-symbols-outlined text-on-surface-variant text-base">
+              {showInstantBells ? 'expand_less' : 'expand_more'}
+            </span>
+          </div>
+        </button>
+
+        {showInstantBells && (
+          <div className="flex flex-col gap-2.5 pt-2 border-t border-surface-container">
+            {/* Bell 1: Instant Entry */}
+            <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
               countdown?.bell === 'جرس الدخول المباشر'
-                ? 'bg-teal-dark text-white animate-pulse'
-                : 'bg-surface-container-lowest text-on-surface'
+                ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+                : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
             }`}>
-              {countdown?.bell === 'جرس الدخول المباشر' ? `متبقي ${countdown.secondsLeft} ثانية` : '20 ثانية'}
-            </span>
-          </div>
-
-          {/* Bell 2: Dismissal Bell */}
-          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-            countdown?.bell === 'جرس الانصراف'
-              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
-              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
-          }`}>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handlePlayBell('جرس الانصراف', 15, 'INSTANT_EXIT')}
-                disabled={countdown !== null}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  countdown?.bell === 'جرس الانصراف'
-                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
-                    : 'bg-teal-dark text-on-primary hover:bg-secondary disabled:opacity-40'
-                }`}
-                title="رنين فوري"
-              >
-                <span className="material-symbols-outlined text-xl">
-                  {countdown?.bell === 'جرس الانصراف' ? 'notifications_active' : 'play_arrow'}
-                </span>
-              </button>
-              <div className="flex flex-col">
-                <span className="font-bold text-[13px]">جرس الانصراف</span>
-                <span className="text-[11px] opacity-80">رنين ثلاثي النغمة لانتهاء الدوام ومغادرة الإدارة</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePlayBell('جرس الدخول المباشر', 20, 'INSTANT_ENTRY')}
+                  disabled={countdown !== null}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                    countdown?.bell === 'جرس الدخول المباشر'
+                      ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                      : 'bg-primary text-on-primary hover:bg-teal-dark disabled:opacity-40'
+                  }`}
+                  title="رنين فوري"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {countdown?.bell === 'جرس الدخول المباشر' ? 'notifications_active' : 'play_arrow'}
+                  </span>
+                </button>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[13px]">جرس الدخول المباشر</span>
+                  <span className="text-[11px] opacity-80">رنين الصعود للطابور والاصطفاف المدرسي</span>
+                </div>
               </div>
+              <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+                countdown?.bell === 'جرس الدخول المباشر'
+                  ? 'bg-teal-dark text-white animate-pulse'
+                  : 'bg-surface-container-lowest text-on-surface'
+              }`}>
+                {countdown?.bell === 'جرس الدخول المباشر' ? `متبقي ${countdown.secondsLeft} ثانية` : '20 ثانية'}
+              </span>
             </div>
-            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+
+            {/* Bell 2: Dismissal Bell */}
+            <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
               countdown?.bell === 'جرس الانصراف'
-                ? 'bg-teal-dark text-white animate-pulse'
-                : 'bg-surface-container-lowest text-on-surface'
+                ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+                : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
             }`}>
-              {countdown?.bell === 'جرس الانصراف' ? `متبقي ${countdown.secondsLeft} ثانية` : '15 ثانية'}
-            </span>
-          </div>
-
-          {/* Bell 3: Period End Warning */}
-          <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-            countdown?.bell === 'تنبيه نهاية الحصة'
-              ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
-              : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
-          }`}>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10, 'PERIOD_END')}
-                disabled={countdown !== null}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                  countdown?.bell === 'تنبيه نهاية الحصة'
-                    ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
-                    : 'bg-surface-container-highest text-on-surface hover:bg-teal-dark hover:text-on-primary disabled:opacity-40'
-                }`}
-                title="رنين فوري"
-              >
-                <span className="material-symbols-outlined text-xl">
-                  {countdown?.bell === 'تنبيه نهاية الحصة' ? 'notifications_active' : 'play_arrow'}
-                </span>
-              </button>
-              <div className="flex flex-col">
-                <span className="font-bold text-[13px]">تنبيه نهاية الحصة</span>
-                <span className="text-[11px] opacity-80">إشعار صوتي بقرب انتهاء وقت الحصة</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePlayBell('جرس الانصراف', 15, 'INSTANT_EXIT')}
+                  disabled={countdown !== null}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                    countdown?.bell === 'جرس الانصراف'
+                      ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                      : 'bg-teal-dark text-on-primary hover:bg-secondary disabled:opacity-40'
+                  }`}
+                  title="رنين فوري"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {countdown?.bell === 'جرس الانصراف' ? 'notifications_active' : 'play_arrow'}
+                  </span>
+                </button>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[13px]">جرس الانصراف</span>
+                  <span className="text-[11px] opacity-80">رنين ثلاثي النغمة لانتهاء الدوام ومغادرة الإدارة</span>
+                </div>
               </div>
+              <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+                countdown?.bell === 'جرس الانصراف'
+                  ? 'bg-teal-dark text-white animate-pulse'
+                  : 'bg-surface-container-lowest text-on-surface'
+              }`}>
+                {countdown?.bell === 'جرس الانصراف' ? `متبقي ${countdown.secondsLeft} ثانية` : '15 ثانية'}
+              </span>
             </div>
-            <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+
+            {/* Bell 3: Period End Warning */}
+            <div className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
               countdown?.bell === 'تنبيه نهاية الحصة'
-                ? 'bg-teal-dark text-white animate-pulse'
-                : 'bg-surface-container-lowest text-on-surface'
+                ? 'bg-primary-container text-white border-teal-dark shadow-md ring-2 ring-teal-dark/30'
+                : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
             }`}>
-              {countdown?.bell === 'تنبيه نهاية الحصة' ? `متبقي ${countdown.secondsLeft} ثانية` : '10 ثوانٍ'}
-            </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10, 'PERIOD_END')}
+                  disabled={countdown !== null}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                    countdown?.bell === 'تنبيه نهاية الحصة'
+                      ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
+                      : 'bg-surface-container-highest text-on-surface hover:bg-teal-dark hover:text-on-primary disabled:opacity-40'
+                  }`}
+                  title="رنين فوري"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {countdown?.bell === 'تنبيه نهاية الحصة' ? 'notifications_active' : 'play_arrow'}
+                  </span>
+                </button>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[13px]">تنبيه نهاية الحصة</span>
+                  <span className="text-[11px] opacity-80">إشعار صوتي بقرب انتهاء وقت الحصة</span>
+                </div>
+              </div>
+              <span className={`font-mono text-xs font-bold px-2 py-1 rounded-lg ${
+                countdown?.bell === 'تنبيه نهاية الحصة'
+                  ? 'bg-teal-dark text-white animate-pulse'
+                  : 'bg-surface-container-lowest text-on-surface'
+              }`}>
+                {countdown?.bell === 'تنبيه نهاية الحصة' ? `متبقي ${countdown.secondsLeft} ثانية` : '10 ثوانٍ'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 3. Live Microphone Broadcast Card */}

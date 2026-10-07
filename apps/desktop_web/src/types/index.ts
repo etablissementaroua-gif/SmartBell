@@ -7,7 +7,7 @@ export type TabType =
   | 'system-audit-logs'
   | 'system-configuration';
 
-export type BellType = 'ENTRY' | 'EXIT' | 'WARNING' | 'BREAK';
+export type BellType = 'ENTRY' | 'EXIT' | 'WARNING' | 'BREAK' | 'ATHAN';
 
 export type BellActionType = 'BELL_ONLY' | 'BELL_THEN_PLAYLIST' | 'DIRECT_AUDIO';
 

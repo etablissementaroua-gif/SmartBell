@@ -94,6 +94,45 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
     month: 'long',
   });
 
+  const getScheduleDisplayMeta = (sched?: BellSchedule) => {
+    if (!sched) return { badge: null, cleanDescription: '', isAdhan: false };
+    const meta = parseScheduleDetails(sched.details);
+    const actionType = sched.action_type || meta.action_type;
+    const isAdhan = sched.bell_type === 'ATHAN' || sched.label.includes('أذان') || sched.label.includes('صلاة');
+
+    let badge: { label: string; icon: string; style: string } | null = null;
+    if (isAdhan) {
+      badge = {
+        label: 'أذان الصلاة',
+        icon: 'mosque',
+        style: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+      };
+    } else if (actionType === 'DIRECT_AUDIO') {
+      const title = sched.media_title || meta.media_title || 'مقطع صوتي مباشر';
+      badge = {
+        label: `بث صوتي: ${title}`,
+        icon: 'music_note',
+        style: 'bg-indigo-400/20 text-indigo-200 border-indigo-400/30',
+      };
+    } else if (actionType === 'BELL_THEN_PLAYLIST') {
+      const sessionName = (sched.playlist_session || meta.playlist_session) === 'NOON_BREAK' ? 'استراحة الظهيرة' : 'إذاعة الاستراحة';
+      badge = {
+        label: `جرس يتبعه ${sessionName}`,
+        icon: 'auto_mode',
+        style: 'bg-teal-accent/20 text-teal-accent border-teal-accent/30',
+      };
+    }
+
+    let cleanDescription = (meta.description || '').trim();
+    if (cleanDescription.startsWith('{') || cleanDescription.includes('"action_type"')) {
+      cleanDescription = '';
+    }
+
+    return { badge, cleanDescription, isAdhan };
+  };
+
+  const nextMeta = getScheduleDisplayMeta(nextSchedule);
+
   return (
     <div className="flex flex-col gap-space-lg w-full">
       {/* 1. Next Scheduled Event Card with Countdown */}
@@ -125,27 +164,19 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               ? (nextSchedule?.label || 'انتهت كافة أجراس اليوم المجدولة')
               : 'لا توجد أجراس مجدولة حالياً'}
           </h3>
-          {nextSchedule && (
+          {nextMeta.badge && (
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              {nextSchedule.action_type === 'BELL_THEN_PLAYLIST' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-accent/20 text-teal-accent text-[11px] font-bold border border-teal-accent/30">
-                  <span className="material-symbols-outlined text-xs">auto_mode</span>
-                  <span>رنين جرس يتبعه بث إذاعي تلقائي</span>
-                </span>
-              )}
-              {nextSchedule.action_type === 'DIRECT_AUDIO' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-400/20 text-indigo-200 text-[11px] font-bold border border-indigo-400/30">
-                  <span className="material-symbols-outlined text-xs">music_note</span>
-                  <span>بث صوتي: {nextSchedule.media_title || 'مقطع صوتي مباشر'}</span>
-                </span>
-              )}
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${nextMeta.badge.style}`}>
+                <span className="material-symbols-outlined text-xs">{nextMeta.badge.icon}</span>
+                <span>{nextMeta.badge.label}</span>
+              </span>
             </div>
           )}
           <p className="text-[12px] text-slate-300 mt-1">
             {activeNowSchedule || audioState.isBellRinging
               ? `الموعد المحدد حان الآن (${nextSchedule?.bell_time}) - جاري البث الصوتي التلقائي.`
               : hasSchedules
-              ? (nextSchedule?.details || 'الموعد المبرمج التالي في خطة الدوام المدرسي')
+              ? (nextMeta.cleanDescription || 'الموعد المبرمج التالي في خطة الدوام المدرسي')
               : 'يرجى إضافة مواعيد الحصص وجداول الأجراس لبدء الجدولة الذكية'}
           </p>
         </div>
@@ -223,7 +254,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               const isCurrentlyRinging = activeNowSchedule?.id === item.id || (audioState.isBellRinging && nextSchedule?.id === item.id);
               const isCompleted = itemSecs < currentSeconds && !isCurrentlyRinging;
               const isCurrent = nextSchedule?.id === item.id || isCurrentlyRinging;
-              const isAdhan = item.bell_type === 'BREAK' && (item.label.includes('أذان') || item.label.includes('صلاة'));
+              const meta = getScheduleDisplayMeta(item);
 
               return (
                 <div key={item.id} className="relative flex items-start gap-3 group">
@@ -236,8 +267,8 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                         ? 'bg-teal-dark text-white'
                         : isCurrent
                         ? 'bg-teal-accent text-slate-deep animate-bounce ring-teal-dark/20'
-                        : isAdhan
-                        ? 'bg-primary-container text-teal-accent'
+                        : meta.isAdhan
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-surface-container-highest text-on-surface-variant'
                     }`}
                   >
@@ -248,7 +279,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                         ? 'check'
                         : isCurrent
                         ? 'notifications_active'
-                        : isAdhan
+                        : meta.isAdhan
                         ? 'mosque'
                         : 'schedule'}
                     </span>
@@ -265,13 +296,19 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-[13px] text-on-surface">
                           {item.label}
                         </span>
                         {isCurrentlyRinging && (
                           <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-deep text-[10px] font-bold animate-pulse">
                             رنين مستمر
+                          </span>
+                        )}
+                        {meta.badge && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold border ${meta.badge.style}`}>
+                            <span className="material-symbols-outlined text-[11px]">{meta.badge.icon}</span>
+                            <span>{meta.badge.label}</span>
                           </span>
                         )}
                       </div>
@@ -281,8 +318,8 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                             ? 'bg-amber-400 text-slate-deep'
                             : isCurrent
                             ? 'bg-teal-dark text-white'
-                            : isAdhan
-                            ? 'bg-primary-container text-teal-accent'
+                            : meta.isAdhan
+                            ? 'bg-emerald-600 text-white'
                             : 'bg-surface-container text-on-surface-variant'
                         }`}
                       >
@@ -290,9 +327,9 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                       </span>
                     </div>
 
-                    {item.details && (
+                    {meta.cleanDescription && (
                       <p className="text-[11px] text-on-surface-variant mt-1 leading-snug">
-                        {item.details}
+                        {meta.cleanDescription}
                       </p>
                     )}
                   </div>
@@ -300,6 +337,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               );
             })}
           </div>
+
         ) : (
           <div className="py-8 px-4 bg-surface-container-low rounded-xl border border-dashed border-surface-container-highest flex flex-col items-center justify-center text-center gap-2.5">
             <span className="material-symbols-outlined text-4xl text-on-surface-variant/50">event_busy</span>

@@ -80,6 +80,53 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
     setShowAddModal(true);
   };
 
+  const handleSyncPrayerTimes = async () => {
+    try {
+      const adhanConfig = await supabaseService.fetchAdhanSettings();
+      const city = adhanConfig.city || 'مراكش';
+      const prayersToSync = [
+        { label: 'أذان صلاة الظهر', time: '12:05', duration: 180 },
+        { label: 'أذان صلاة العصر', time: '15:42', duration: 180 },
+      ];
+
+      let addedCount = 0;
+      for (const p of prayersToSync) {
+        const exists = schedules.some((s) => s.label === p.label || (s.bell_type === 'ATHAN' && s.bell_time.startsWith(p.time.slice(0, 2))));
+        if (!exists) {
+          onAddSchedule({
+            preset_id: activePreset,
+            bell_time: p.time,
+            bell_type: 'ATHAN',
+            label: p.label,
+            details: serializeScheduleDetails({
+              days_of_week: [1, 2, 3, 4, 5, 6],
+              action_type: 'DIRECT_AUDIO',
+              description: `أذان الصلاة الرسمي لمدينة ${city} وفق معايير وزارة الأوقاف والشؤون الإسلامية`,
+            }),
+            duration_seconds: p.duration,
+            target_zones: ['ALL'],
+            is_enabled: true,
+            days_of_week: [1, 2, 3, 4, 5, 6],
+            action_type: 'DIRECT_AUDIO',
+          });
+          addedCount++;
+        }
+      }
+
+      if (onShowToast) {
+        if (addedCount > 0) {
+          onShowToast('success', `تمت مزامنة وإضافة ${addedCount} مواقيت صلاة لمدينة ${city} بنجاح إلى جدول الأجراس.`, 'مواقيت الصلاة');
+        } else {
+          onShowToast('info', `مواقيت الصلاة لمدينة ${city} مبرمجة ومدرجة مسبقاً في الجدول.`, 'مواقيت الصلاة');
+        }
+      }
+    } catch (e) {
+      if (onShowToast) {
+        onShowToast('error', 'تعذر جلب إعدادات الأذان، يرجى التحقق من الشبكة.', 'خطأ في المزامنة');
+      }
+    }
+  };
+
   const handleOpenEdit = (sched: BellSchedule) => {
     setEditingSchedule(sched);
     setEditLabel(sched.label);
@@ -107,6 +154,15 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
 
   const handleTestSound = (sched: BellSchedule) => {
     setTestingId(sched.id);
+
+    if (sched.bell_type === 'ATHAN') {
+      audioPlayerService.playAdhanChime(sched.label);
+      if (onShowToast) {
+        onShowToast('info', `جاري معاينة صوت أذان الصلاة: [${sched.label}]`, 'معاينة الأذان');
+      }
+      setTimeout(() => setTestingId(null), 3000);
+      return;
+    }
 
     const actionType = sched.action_type || parseScheduleDetails(sched.details).action_type;
     const session = sched.playlist_session || parseScheduleDetails(sched.details).playlist_session || 'MORNING_BREAK';
@@ -226,6 +282,13 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
         return <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface text-xs font-bold">استراحة / فسحة</span>;
       case 'WARNING':
         return <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-xs font-bold">تنبيه عودة</span>;
+      case 'ATHAN':
+        return (
+          <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">mosque</span>
+            <span>أذان الصلاة</span>
+          </span>
+        );
     }
   };
 
@@ -321,14 +384,26 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-space-xl py-2.5 bg-teal-dark hover:bg-secondary text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95"
-        >
-          <span className="material-symbols-outlined text-lg">add_alarm</span>
-          <span>إضافة موعد أو منبه ذكي جديد</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleSyncPrayerTimes}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95"
+            title="جلب مواقيت أذان الظهر والعصر تلقائياً وفق الحساب الفلكي وإضافتها للجدول"
+          >
+            <span className="material-symbols-outlined text-base text-emerald-200">mosque</span>
+            <span>⚡ مزامنة مواقيت الصلاة</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="flex items-center gap-2 px-space-xl py-2.5 bg-teal-dark hover:bg-secondary text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined text-lg">add_alarm</span>
+            <span>إضافة موعد أو منبه ذكي جديد</span>
+          </button>
+        </div>
       </div>
 
       {/* Preset Switcher Cards */}
@@ -425,9 +500,12 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                           <span className="font-bold text-on-surface text-[13px]">{schedule.label}</span>
                           {getBellTypeBadge(schedule.bell_type)}
                         </div>
-                        {schedule.details && (
-                          <span className="text-[11px] text-on-surface-variant line-clamp-1">{schedule.details}</span>
-                        )}
+                        {(() => {
+                          const meta = parseScheduleDetails(schedule.details);
+                          const desc = (meta.description || schedule.details || '').trim();
+                          if (!desc || desc.startsWith('{') || desc.includes('"action_type"')) return null;
+                          return <span className="text-[11px] text-on-surface-variant line-clamp-1">{desc}</span>;
+                        })()}
                       </div>
                     </td>
                     <td className="py-space-md px-space-md">
@@ -545,13 +623,28 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                     'بداية الاستراحة الأولى',
                     'نهاية الاستراحة وعودة الفصول',
                     'استراحة الظهيرة',
+                    'أذان صلاة الظهر',
+                    'أذان صلاة العصر',
                     'جرس الانصراف والمغادرة',
                   ].map((presetText) => (
                     <button
                       key={presetText}
                       type="button"
-                      onClick={() => setNewLabel(presetText)}
-                      className="px-2 py-0.5 rounded-md bg-surface-container hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-medium transition-colors"
+                      onClick={() => {
+                        setNewLabel(presetText);
+                        if (presetText.includes('أذان')) {
+                          setNewType('ATHAN');
+                          setNewActionType('DIRECT_AUDIO');
+                          setNewDuration(180);
+                          if (presetText.includes('الظهر')) setNewTime('12:05');
+                          if (presetText.includes('العصر')) setNewTime('15:42');
+                        }
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                        presetText.includes('أذان')
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20'
+                          : 'bg-surface-container hover:bg-surface-container-highest text-on-surface-variant'
+                      }`}
                     >
                       {presetText}
                     </button>
@@ -584,6 +677,7 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                     <option value="EXIT">جرس انصراف الطلاب</option>
                     <option value="BREAK">استراحة / فسحة مدرسية</option>
                     <option value="WARNING">تنبيه نهاية الحصة / عودة</option>
+                    <option value="ATHAN">🕌 أذان الصلاة (مواقيت الصلاة)</option>
                   </select>
                 </div>
               </div>
@@ -890,6 +984,7 @@ export const BellSchedulerView: React.FC<BellSchedulerViewProps> = ({
                     <option value="EXIT">جرس انصراف الطلاب</option>
                     <option value="BREAK">استراحة / فسحة مدرسية</option>
                     <option value="WARNING">تنبيه نهاية الحصة / عودة</option>
+                    <option value="ATHAN">🕌 أذان الصلاة (مواقيت الصلاة)</option>
                   </select>
                 </div>
               </div>

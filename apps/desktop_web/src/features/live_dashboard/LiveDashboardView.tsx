@@ -58,10 +58,19 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
         </div>
       )}
 
-      {/* 3-Column Layout Matching Design Mockup (Image 2) */}
+      {/* 3-Column Layout: Mobile-first ordering puts Countdown & Timeline first on phones */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-lg xl:gap-space-xl items-start">
+        {/* Column 3 (Now First on Mobile): Next Scheduled Event Countdown & Sequential Timeline */}
+        <div className="flex flex-col gap-space-lg w-full order-1 lg:order-3">
+          <TimelineCountdown
+            schedules={schedules}
+            onOpenSchedules={() => onNavigateToTab('bell-schedules')}
+            onEditNextEvent={() => onNavigateToTab('bell-schedules')}
+          />
+        </div>
+
         {/* Column 1: Live Broadcast Player & Upcoming Tracks */}
-        <div className="flex flex-col gap-space-lg w-full">
+        <div className="flex flex-col gap-space-lg w-full order-2 lg:order-1">
           <NowPlayingCard
             tracks={tracks}
             onInsertTrack={() => onNavigateToTab('media-library')}
@@ -70,21 +79,12 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
         </div>
 
         {/* Column 2: Emergency Silence, Instant Chimes, and Live Mic */}
-        <div className="flex flex-col gap-space-lg w-full">
+        <div className="flex flex-col gap-space-lg w-full order-3 lg:order-2">
           <OverridesPanel
             isEmergencyMuted={isEmergencyMuted}
             onToggleEmergencyMute={onToggleEmergencyMute}
             onTriggerInstantBell={triggerInstantBell}
             onShowToast={onShowToast}
-          />
-        </div>
-
-        {/* Column 3: Next Scheduled Event Countdown & Sequential Timeline */}
-        <div className="flex flex-col gap-space-lg w-full">
-          <TimelineCountdown
-            schedules={schedules}
-            onOpenSchedules={() => onNavigateToTab('bell-schedules')}
-            onEditNextEvent={() => onNavigateToTab('bell-schedules')}
           />
         </div>
       </div>
