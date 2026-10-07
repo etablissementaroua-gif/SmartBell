@@ -12,6 +12,7 @@ import { SystemConfigurationView } from './features/system_configuration/SystemC
 import { SystemAuditLogsView } from './features/system_audit_logs/SystemAuditLogsView';
 import { LoginModal } from './features/authentication/LoginModal';
 import { audioPlayerService } from './core/audioPlayerService';
+import { smartSchedulerService } from './core/smartSchedulerService';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('live-control-dashboard');
@@ -35,6 +36,40 @@ export const App: React.FC = () => {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Sync schedules with smart scheduler engine
+  useEffect(() => {
+    smartSchedulerService.setSchedules(schedules);
+  }, [schedules]);
+
+  // Sync tracks with smart scheduler engine
+  useEffect(() => {
+    smartSchedulerService.setTracks(tracks);
+  }, [tracks]);
+
+  // Start smart scheduler loop and listen for triggers
+  useEffect(() => {
+    smartSchedulerService.start();
+
+    const unsubTrigger = smartSchedulerService.onTrigger((sched, actionType) => {
+      const typeLabel = actionType === 'BELL_THEN_PLAYLIST'
+        ? 'رنين جرس يتبعه إذاعة الاستراحة'
+        : actionType === 'DIRECT_AUDIO'
+        ? 'بث مقطع صوتي مباشر'
+        : 'رنين جرس مدرسي';
+
+      addToast(
+        'success',
+        `انطلاق الموعد المجدول تلقائياً: [${sched.label}] في التوقيت ${sched.bell_time} (${typeLabel})`,
+        '⏰ محرك الجدولة التلقائي'
+      );
+    });
+
+    return () => {
+      unsubTrigger();
+      smartSchedulerService.stop();
+    };
+  }, []);
 
   // 1. Initial Load from Supabase with Fallback
   useEffect(() => {

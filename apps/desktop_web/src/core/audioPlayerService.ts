@@ -36,6 +36,9 @@ class AudioPlayerService {
   private fallbackAudioCtx: AudioContext | null = null;
   private isFallbackActive = false;
 
+  private sharedAudioCtx: AudioContext | null = null;
+  private isUnlocked = false;
+
   private constructor() {
     if (typeof window !== 'undefined') {
       this.audio = new Audio();
@@ -71,6 +74,18 @@ class AudioPlayerService {
           this.playMelodicFallback();
         }
       });
+
+      // Global one-time interaction listener to unlock AudioContext & HTMLAudio
+      const unlockEvents = ['click', 'touchstart', 'keydown', 'pointerdown'];
+      const handleFirstInteraction = () => {
+        this.unlockAudio();
+        unlockEvents.forEach((evt) => {
+          window.removeEventListener(evt, handleFirstInteraction, true);
+        });
+      };
+      unlockEvents.forEach((evt) => {
+        window.addEventListener(evt, handleFirstInteraction, { capture: true, once: true });
+      });
     }
   }
 
@@ -79,6 +94,45 @@ class AudioPlayerService {
       AudioPlayerService.instance = new AudioPlayerService();
     }
     return AudioPlayerService.instance;
+  }
+
+  /**
+   * Unlocks Web Audio AudioContext and HTMLAudioElement for uninterrupted autoplay
+   */
+  public unlockAudio(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        if (!this.sharedAudioCtx || this.sharedAudioCtx.state === 'closed') {
+          this.sharedAudioCtx = new AudioCtx();
+        }
+        if (this.sharedAudioCtx.state === 'suspended') {
+          this.sharedAudioCtx.resume().catch(() => {});
+        }
+      }
+
+      if (!this.isUnlocked && this.audio) {
+        // Prime the audio element with a tiny silent buffer
+        const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        const originalSrc = this.audio.src;
+        if (!originalSrc || originalSrc.endsWith('base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA')) {
+          this.audio.src = silentWav;
+          const p = this.audio.play();
+          if (p) {
+            p.then(() => {
+              if (this.audio && this.audio.src.includes('base64')) {
+                this.audio.pause();
+                this.audio.currentTime = 0;
+              }
+            }).catch(() => {});
+          }
+        }
+        this.isUnlocked = true;
+      }
+    } catch (e) {
+      console.warn('Audio unlock warning:', e);
+    }
   }
 
   // --- 1. IndexedDB Persistent Storage for Audio Files ---
@@ -183,10 +237,16 @@ class AudioPlayerService {
   // --- 3. School Bell Audio Chime Synthesizer ---
   public playSchoolBellChime(type: BellType = 'ENTRY', durationSec: number = 5): void {
     try {
+      this.unlockAudio();
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
+      if (!this.sharedAudioCtx || this.sharedAudioCtx.state === 'closed') {
+        this.sharedAudioCtx = new AudioCtx();
+      }
+      const ctx = this.sharedAudioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
 
       // Westminster & harmonic bell patterns
       const notes = type === 'EXIT'
@@ -200,35 +260,32 @@ class AudioPlayerService {
 
       const playChimePattern = () => {
         if (!this.isBellRinging && currentRepeat > 0) {
-          try { ctx.close(); } catch (_) {}
           return;
         }
 
         notes.forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
+          try {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
 
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.3);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.3);
 
-          const vol = Math.max(0.1, this.volume * 0.4);
-          gain.gain.setValueAtTime(vol, ctx.currentTime + idx * 0.3);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.3 + 0.5);
+            const vol = Math.max(0.1, this.volume * 0.4);
+            gain.gain.setValueAtTime(vol, ctx.currentTime + idx * 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.3 + 0.5);
 
-          osc.connect(gain);
-          gain.connect(ctx.destination);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
 
-          osc.start(ctx.currentTime + idx * 0.3);
-          osc.stop(ctx.currentTime + idx * 0.3 + 0.5);
+            osc.start(ctx.currentTime + idx * 0.3);
+            osc.stop(ctx.currentTime + idx * 0.3 + 0.5);
+          } catch (_) {}
         });
 
         currentRepeat++;
         if (currentRepeat < repeatCount) {
           setTimeout(playChimePattern, 1300);
-        } else {
-          setTimeout(() => {
-            try { ctx.close(); } catch (_) {}
-          }, 1500);
         }
       };
 
@@ -240,6 +297,7 @@ class AudioPlayerService {
 
   // --- 4. Real Track Playback Engine ---
   public async playTrack(track: IntermissionTrack): Promise<void> {
+    this.unlockAudio();
     this.stopFallback();
     if (this.bellTimer) {
       clearInterval(this.bellTimer);
@@ -400,13 +458,17 @@ class AudioPlayerService {
     this.notifyListeners();
 
     try {
+      this.unlockAudio();
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      if (!this.sharedAudioCtx || this.sharedAudioCtx.state === 'closed') {
+        this.sharedAudioCtx = new AudioCtx();
+      }
+      const ctx = this.sharedAudioCtx;
       this.fallbackAudioCtx = ctx;
 
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(() => {});
       }
 
       // Educational melody notes: C4, E4, G4, A4, G4, E4, C4, D4, E4, C4
@@ -443,7 +505,7 @@ class AudioPlayerService {
         osc.connect(gain);
         gain.connect(ctx.destination);
 
-        osc.start();
+        osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + n.d);
 
         this.currentTime += 1;
@@ -468,12 +530,7 @@ class AudioPlayerService {
       clearTimeout(this.fallbackOscillatorTimer);
       this.fallbackOscillatorTimer = null;
     }
-    if (this.fallbackAudioCtx) {
-      try {
-        this.fallbackAudioCtx.close();
-      } catch (_) {}
-      this.fallbackAudioCtx = null;
-    }
+    this.fallbackAudioCtx = null;
     this.isFallbackActive = false;
   }
 }

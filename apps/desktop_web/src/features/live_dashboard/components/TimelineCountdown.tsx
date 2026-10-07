@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BellSchedule } from '../../../types';
+import { BellSchedule, parseScheduleDetails } from '../../../types';
+import { audioPlayerService, AudioPlayerState } from '../../../core/audioPlayerService';
 
 interface TimelineCountdownProps {
   schedules: BellSchedule[];
@@ -14,12 +15,21 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
 }) => {
   const hasSchedules = schedules && schedules.length > 0;
   const [now, setNow] = useState<Date>(new Date());
+  const [audioState, setAudioState] = useState<AudioPlayerState>(audioPlayerService.getCurrentState());
 
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
     }, 1000);
-    return () => clearInterval(timer);
+
+    const unsubAudio = audioPlayerService.subscribe((state) => {
+      setAudioState(state);
+    });
+
+    return () => {
+      clearInterval(timer);
+      unsubAudio();
+    };
   }, []);
 
   const timeToSeconds = (timeStr: string) => {
@@ -38,7 +48,10 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
   const enabledSchedules = hasSchedules 
     ? schedules.filter((s) => {
         if (!s.is_enabled) return false;
-        const days = s.days_of_week && s.days_of_week.length > 0 ? s.days_of_week : [1, 2, 3, 4, 5, 6];
+        const meta = parseScheduleDetails(s.details);
+        const days = s.days_of_week && s.days_of_week.length > 0 
+          ? s.days_of_week 
+          : (meta.days_of_week && meta.days_of_week.length > 0 ? meta.days_of_week : [1, 2, 3, 4, 5, 6]);
         return days.includes(currentDayId);
       }) 
     : [];
@@ -47,13 +60,23 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
     (a, b) => timeToSeconds(a.bell_time) - timeToSeconds(b.bell_time)
   );
 
-  let nextSchedule: BellSchedule | undefined = sortedSchedules.find(
-    (s) => timeToSeconds(s.bell_time) > currentSeconds
+  // Check if an event is currently ringing right now
+  const activeNowSchedule = sortedSchedules.find((s) => {
+    const sSecs = timeToSeconds(s.bell_time);
+    const dur = s.duration_seconds || 15;
+    return currentSeconds >= sSecs && currentSeconds < sSecs + dur;
+  });
+
+  // Next upcoming schedule
+  let nextSchedule: BellSchedule | undefined = activeNowSchedule || sortedSchedules.find(
+    (s) => timeToSeconds(s.bell_time) >= currentSeconds
   );
   let secondsLeft = 0;
 
-  if (nextSchedule) {
-    secondsLeft = timeToSeconds(nextSchedule.bell_time) - currentSeconds;
+  if (activeNowSchedule) {
+    secondsLeft = 0;
+  } else if (nextSchedule) {
+    secondsLeft = Math.max(0, timeToSeconds(nextSchedule.bell_time) - currentSeconds);
   } else if (sortedSchedules.length > 0) {
     nextSchedule = sortedSchedules[0];
     secondsLeft = 86400 - currentSeconds + timeToSeconds(nextSchedule.bell_time);
@@ -79,8 +102,17 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
         <div className="absolute top-0 right-0 w-32 h-32 bg-teal-dark/15 rounded-full blur-2xl pointer-events-none"></div>
 
         <div className="flex items-center justify-between z-10">
-          <span className="px-space-md py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold text-xs shadow-sm">
-            {hasSchedules ? 'الحدث المجدول القادم' : 'جدولة الأجراس'}
+          <span className={`px-space-md py-1 rounded-full font-bold text-xs shadow-sm flex items-center gap-1.5 ${
+            activeNowSchedule || audioState.isBellRinging
+              ? 'bg-amber-400 text-slate-deep animate-pulse'
+              : 'bg-secondary-fixed text-on-secondary-fixed'
+          }`}>
+            {(activeNowSchedule || audioState.isBellRinging) && (
+              <span className="material-symbols-outlined text-sm animate-spin">notifications_active</span>
+            )}
+            {activeNowSchedule || audioState.isBellRinging
+              ? '🔔 جاري انطلاق الموعد ورنين الجرس الآن!'
+              : hasSchedules ? 'الحدث المجدول القادم' : 'جدولة الأجراس'}
           </span>
           <span className="text-[11px] text-teal-accent font-mono">
             نظام الجدولة الذكي
@@ -110,7 +142,9 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
             </div>
           )}
           <p className="text-[12px] text-slate-300 mt-1">
-            {hasSchedules
+            {activeNowSchedule || audioState.isBellRinging
+              ? `الموعد المحدد حان الآن (${nextSchedule?.bell_time}) - جاري البث الصوتي التلقائي.`
+              : hasSchedules
               ? (nextSchedule?.details || 'الموعد المبرمج التالي في خطة الدوام المدرسي')
               : 'يرجى إضافة مواعيد الحصص وجداول الأجراس لبدء الجدولة الذكية'}
           </p>
@@ -184,10 +218,11 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
         {/* Timeline Items or Empty State */}
         {hasSchedules ? (
           <div className="relative pr-6 flex flex-col gap-4 before:absolute before:right-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-highest">
-            {schedules.map((item) => {
+            {sortedSchedules.map((item) => {
               const itemSecs = timeToSeconds(item.bell_time);
-              const isCompleted = itemSecs < currentSeconds;
-              const isCurrent = nextSchedule?.id === item.id;
+              const isCurrentlyRinging = activeNowSchedule?.id === item.id || (audioState.isBellRinging && nextSchedule?.id === item.id);
+              const isCompleted = itemSecs < currentSeconds && !isCurrentlyRinging;
+              const isCurrent = nextSchedule?.id === item.id || isCurrentlyRinging;
               const isAdhan = item.bell_type === 'BREAK' && (item.label.includes('أذان') || item.label.includes('صلاة'));
 
               return (
@@ -195,7 +230,9 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                   {/* Node Bullet */}
                   <div
                     className={`absolute -right-6 top-1 w-5 h-5 rounded-full flex items-center justify-center ring-4 ring-surface-container-lowest transition-all ${
-                      isCompleted
+                      isCurrentlyRinging
+                        ? 'bg-amber-400 text-slate-deep ring-amber-400/40 animate-pulse'
+                        : isCompleted
                         ? 'bg-teal-dark text-white'
                         : isCurrent
                         ? 'bg-teal-accent text-slate-deep animate-bounce ring-teal-dark/20'
@@ -205,7 +242,9 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                     }`}
                   >
                     <span className="material-symbols-outlined text-[13px]">
-                      {isCompleted
+                      {isCurrentlyRinging
+                        ? 'volume_up'
+                        : isCompleted
                         ? 'check'
                         : isCurrent
                         ? 'notifications_active'
@@ -218,18 +257,29 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                   {/* Content Box */}
                   <div
                     className={`flex-1 p-2.5 rounded-xl border transition-all ${
-                      isCurrent
+                      isCurrentlyRinging
+                        ? 'bg-amber-500/10 border-amber-500/40 ring-2 ring-amber-500/30 shadow-md'
+                        : isCurrent
                         ? 'bg-secondary-container/25 border-teal-dark/30 ring-1 ring-teal-dark/30 shadow-sm'
                         : 'bg-surface-container-low border-surface-container hover:bg-surface-container'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-[13px] text-on-surface">
-                        {item.label}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[13px] text-on-surface">
+                          {item.label}
+                        </span>
+                        {isCurrentlyRinging && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-deep text-[10px] font-bold animate-pulse">
+                            رنين مستمر
+                          </span>
+                        )}
+                      </div>
                       <span
                         className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-                          isCurrent
+                          isCurrentlyRinging
+                            ? 'bg-amber-400 text-slate-deep'
+                            : isCurrent
                             ? 'bg-teal-dark text-white'
                             : isAdhan
                             ? 'bg-primary-container text-teal-accent'
