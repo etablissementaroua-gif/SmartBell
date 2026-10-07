@@ -4,6 +4,7 @@ import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer, ToastMessage } from './components/Toast';
+import { AudioUnlockBanner } from './components/AudioUnlockBanner';
 import { LiveDashboardView } from './features/live_dashboard/LiveDashboardView';
 import { BellSchedulerView } from './features/bell_scheduler/BellSchedulerView';
 import { IntermissionPlaylistView } from './features/intermission_playlist/IntermissionPlaylistView';
@@ -224,6 +225,9 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-surface font-cairo text-on-surface antialiased" dir="rtl">
       {/* Toast Notification Layer */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
+
+      {/* Web Audio Autoplay Unlock Floating Banner */}
+      <AudioUnlockBanner />
 
       {/* Right Sidebar */}
       <Sidebar

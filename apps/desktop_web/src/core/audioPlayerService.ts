@@ -96,11 +96,32 @@ class AudioPlayerService {
     return AudioPlayerService.instance;
   }
 
+  private unlockListeners: Set<(unlocked: boolean) => void> = new Set();
+
+  public isAudioUnlocked(): boolean {
+    return this.isUnlocked && this.sharedAudioCtx !== null && this.sharedAudioCtx.state === 'running';
+  }
+
+  public onAudioUnlockChange(listener: (unlocked: boolean) => void): () => void {
+    this.unlockListeners.add(listener);
+    listener(this.isAudioUnlocked());
+    return () => {
+      this.unlockListeners.delete(listener);
+    };
+  }
+
+  private notifyUnlockChange(): void {
+    const unlocked = this.isAudioUnlocked();
+    this.unlockListeners.forEach((fn) => {
+      try { fn(unlocked); } catch (_) {}
+    });
+  }
+
   /**
    * Unlocks Web Audio AudioContext and HTMLAudioElement for uninterrupted autoplay
    */
-  public unlockAudio(): void {
-    if (typeof window === 'undefined') return;
+  public async unlockAudio(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -108,11 +129,11 @@ class AudioPlayerService {
           this.sharedAudioCtx = new AudioCtx();
         }
         if (this.sharedAudioCtx.state === 'suspended') {
-          this.sharedAudioCtx.resume().catch(() => {});
+          await this.sharedAudioCtx.resume().catch(() => {});
         }
       }
 
-      if (!this.isUnlocked && this.audio) {
+      if (this.audio) {
         // Prime the audio element with a tiny silent buffer
         const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
         const originalSrc = this.audio.src;
@@ -120,7 +141,7 @@ class AudioPlayerService {
           this.audio.src = silentWav;
           const p = this.audio.play();
           if (p) {
-            p.then(() => {
+            await p.then(() => {
               if (this.audio && this.audio.src.includes('base64')) {
                 this.audio.pause();
                 this.audio.currentTime = 0;
@@ -128,11 +149,39 @@ class AudioPlayerService {
             }).catch(() => {});
           }
         }
-        this.isUnlocked = true;
       }
+
+      this.isUnlocked = true;
+      this.notifyUnlockChange();
+      return true;
     } catch (e) {
       console.warn('Audio unlock warning:', e);
+      return false;
     }
+  }
+
+  /**
+   * Plays a pleasant test chime to confirm speakers and Web Audio are working
+   */
+  public playUnlockConfirmationSound(): void {
+    try {
+      this.unlockAudio();
+      if (!this.sharedAudioCtx) return;
+      const ctx = this.sharedAudioCtx;
+      const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.12);
+        osc.stop(ctx.currentTime + idx * 0.12 + 0.35);
+      });
+    } catch (_) {}
   }
 
   // --- 1. IndexedDB Persistent Storage for Audio Files ---
@@ -230,6 +279,43 @@ class AudioPlayerService {
         } else {
           this.stop();
         }
+      }
+    }, 1000);
+  }
+
+  // --- 2.1 Auto-Chaining Execution (Bell -> Single Direct Audio Track) ---
+  public async playBellThenDirectAudio(
+    bellType: BellType,
+    bellDurationSec: number,
+    track: IntermissionTrack,
+    eventName?: string
+  ): Promise<void> {
+    this.stop();
+    this.isBellRinging = true;
+    this.bellSecondsRemaining = Math.max(3, bellDurationSec || 10);
+    this.chainedSessionName = eventName ? `بث جرس: ${eventName}` : 'رنين الجرس المدرسي';
+    this.activePlaylistQueue = [track];
+    this.currentQueueIndex = 0;
+    this.isPlaying = true;
+    this.notifyListeners();
+
+    // Start physical bell chime
+    this.playSchoolBellChime(bellType, this.bellSecondsRemaining);
+
+    // Bell countdown timer
+    if (this.bellTimer) clearInterval(this.bellTimer);
+    this.bellTimer = setInterval(() => {
+      this.bellSecondsRemaining -= 1;
+      this.notifyListeners();
+
+      if (this.bellSecondsRemaining <= 0) {
+        clearInterval(this.bellTimer);
+        this.bellTimer = null;
+        this.isBellRinging = false;
+        this.notifyListeners();
+
+        // Immediately transition to playing the direct audio track
+        this.playTrack(track);
       }
     }, 1000);
   }
