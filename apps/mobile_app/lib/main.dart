@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'core/network/supabase_service.dart';
 import 'core/theme/app_theme.dart';
-import 'features/authentication/views/login_screen.dart';
+import 'features/web_dashboard_shell/views/dashboard_shell_screen.dart';
 
-void main() async {
+/// تطبيق الهاتف يعرض لوحة التحكم الموحدة نفسها المستخدمة على الحاسوب
+/// (تسجيل الدخول، الجدولة، الأذان، الإذاعة، المكتبة الصوتية، السجلات، الإعدادات)
+/// بحيث تبقى النسختان متطابقتين تلقائياً مع كل تحديث للويب.
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseService.instance.init();
   runApp(const SmartBellApp());
 }
 
@@ -15,10 +16,10 @@ class SmartBellApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SmartBell Controller',
+      title: 'SmartBell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const SmartBellLoginScreen(),
+      home: const DashboardShellScreen(),
     );
   }
 }

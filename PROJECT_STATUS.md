@@ -4,11 +4,20 @@
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
-- **الإصدار النشط:** v2.6.1 (Authentic Release APK & Android Package Parse Error Resolution)
+- **الإصدار النشط:** v2.7.0 (Mobile App ↔ Desktop Parity WebView Shell)
 
 ---
 
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
+
+### 🆕 مطابقة تطبيق الهاتف لنسخة الحاسوب (Mobile Parity WebView Shell) - v2.7.0
+- **المشكلة:** تطبيق الأندرويد القديم كان شاشة "SmartBell Controller" أصلية ببيانات ثابتة وهمية (IP ثابت، ثلاثة أجراس ثابتة، موعد 10:00 ثابت) ولا يطابق لوحة الحاسوب.
+- **الحل:** ميزة جديدة معزولة `apps/mobile_app/lib/features/web_dashboard_shell/` تعرض لوحة التحكم المنشورة `https://smartbell-9ec8b.web.app` بملء الشاشة عبر `flutter_inappwebview`، فيصبح التطبيق مطابقاً 100% للحاسوب (نفس الواجهة، نفس البيانات من Supabase، نفس تسجيل الدخول) ويتحدث تلقائياً مع كل نشر للويب دون إعادة تثبيت.
+  - تشغيل الصوت دون لمسة (`mediaPlaybackRequiresUserGesture: false`) لضمان انطلاق الأجراس المجدولة.
+  - زر الرجوع في أندرويد يتنقل داخل اللوحة، والروابط الخارجية/ملفات APK تُفتح في المتصفح.
+  - شاشة إقلاع بشعار SmartBell، وشاشة "لا يوجد اتصال" مع زر إعادة المحاولة، وأشرطة نظام بيضاء متناسقة مع ثيم الويب.
+  - أيقونة تطبيق جديدة (SmartBell) عبر `flutter_launcher_icons`، واسم التطبيق "SmartBell"، الإصدار `2.7.0+3`.
+- الملفات الأصلية القديمة (`login_screen.dart`, `remote_controller*.dart`, `audio_broadcast_service.dart`) محفوظة دون استخدام.
 
 ### 1. حل مشكلة تحليل حزمة الأندرويد وبناء الحزمة الرسمية (Authentic Release APK) - v2.6.1
 - **تشخيص ومعالجة خطأ "حدث مشكل أثناء تحليل الحزمة" (Parse Error):**
