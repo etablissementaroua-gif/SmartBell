@@ -164,7 +164,7 @@ class SmartSchedulerService {
         this.tracks[0];
 
       if (targetTrack) {
-        audioPlayerService.playBellThenDirectAudio(schedule.bell_type, duration, targetTrack, schedule.label);
+        audioPlayerService.playTrack(targetTrack);
       } else {
         audioPlayerService.playSchoolBellChime(schedule.bell_type, duration);
       }

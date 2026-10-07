@@ -136,7 +136,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               {nextSchedule.action_type === 'DIRECT_AUDIO' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-400/20 text-indigo-200 text-[11px] font-bold border border-indigo-400/30">
                   <span className="material-symbols-outlined text-xs">music_note</span>
-                  <span>بث مقطع صوتي مباشر</span>
+                  <span>بث صوتي: {nextSchedule.media_title || 'مقطع صوتي مباشر'}</span>
                 </span>
               )}
             </div>
