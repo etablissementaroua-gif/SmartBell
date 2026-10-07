@@ -1,0 +1,25 @@
+{
+  "name": "SmartBell Desk - إدارة البث والتوقيت المدرسي",
+  "short_name": "SmartBell",
+  "description": "منظومة الأجراس والإذاعة والتحكم الصوتي المدرسية الذكية",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#00201c",
+  "theme_color": "#004d40",
+  "icons": [
+    {
+      "src": "/assets/smartbell_icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/smartbell_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

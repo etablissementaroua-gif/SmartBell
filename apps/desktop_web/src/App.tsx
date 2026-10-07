@@ -3,6 +3,7 @@ import { TabType, BellSchedule, IntermissionTrack } from './types';
 import { supabaseService } from './core/supabaseService';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { AudioUnlockBanner } from './components/AudioUnlockBanner';
 import { LiveDashboardView } from './features/live_dashboard/LiveDashboardView';
@@ -17,6 +18,7 @@ import { smartSchedulerService } from './core/smartSchedulerService';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabType>('live-control-dashboard');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
   const [masterVolume, setMasterVolume] = useState<number>(75);
   const [isEmergencyMuted, setIsEmergencyMuted] = useState<boolean>(false);
   const [schedules, setSchedules] = useState<BellSchedule[]>([]);
@@ -229,25 +231,28 @@ export const App: React.FC = () => {
       {/* Web Audio Autoplay Unlock Floating Banner */}
       <AudioUnlockBanner />
 
-      {/* Right Sidebar */}
+      {/* Right Sidebar (Desktop static & Mobile slide drawer) */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         onLogout={() => setIsLoginModalOpen(true)}
+        isMobileOpen={mobileDrawerOpen}
+        onCloseMobile={() => setMobileDrawerOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="pr-72">
+      <div className="pr-0 lg:pr-72 min-h-screen">
         {/* Top Header */}
         <Header
           masterVolume={masterVolume}
           onMasterVolumeChange={handleMasterVolumeChange}
           onEmergencyMute={handleToggleEmergencyMute}
           isEmergencyMuted={isEmergencyMuted}
+          onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
         />
 
         {/* Tab Content */}
-        <main className="relative pt-20 px-space-xl py-space-lg bg-surface min-h-[calc(100vh-4rem)]">
+        <main className="relative pt-20 px-3 sm:px-space-lg lg:px-space-xl py-space-md sm:py-space-lg pb-24 lg:pb-space-lg bg-surface min-h-[calc(100vh-4rem)]">
           {currentTab === 'live-control-dashboard' && (
             <LiveDashboardView
               schedules={schedules}
@@ -297,6 +302,13 @@ export const App: React.FC = () => {
           {currentTab === 'system-audit-logs' && <SystemAuditLogsView onShowToast={addToast} />}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Thumb-friendly, visible on <1024px) */}
+      <MobileBottomNav
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        onOpenDrawer={() => setMobileDrawerOpen(true)}
+      />
 
       {/* Unified Login Modal */}
       <LoginModal

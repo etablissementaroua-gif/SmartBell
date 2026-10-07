@@ -37,7 +37,7 @@ export const AudioUnlockBanner: React.FC = () => {
   return (
     <aside
       aria-label="تنبيه تفعيل الصوت التلقائي"
-      className="fixed bottom-6 left-6 right-6 md:left-auto md:right-8 md:max-w-md z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
+      className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-8 md:max-w-md z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
       <div className="bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-amber-500/40 backdrop-blur-xl flex flex-col gap-3 ring-2 ring-amber-500/20">
         <div className="flex items-start justify-between gap-3">
