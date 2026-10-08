@@ -304,6 +304,48 @@ export class SupabaseService {
     };
   }
 
+  public subscribeToIntermissionTracks(onChange: (tracks: IntermissionTrack[]) => void) {
+    if (!isSupabaseConfigured()) return () => {};
+
+    const channel = supabase
+      .channel('public:intermission_tracks')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'intermission_tracks' },
+        async (payload) => {
+          console.log('🔄 [SupabaseService] Realtime change detected on intermission_tracks:', payload.eventType);
+          const fresh = await this.fetchIntermissionTracks();
+          onChange(fresh);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }
+
+  public subscribeToBellSchedules(onChange: (schedules: BellSchedule[]) => void) {
+    if (!isSupabaseConfigured()) return () => {};
+
+    const channel = supabase
+      .channel('public:bell_schedules')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bell_schedules' },
+        async (payload) => {
+          console.log('🔄 [SupabaseService] Realtime change detected on bell_schedules:', payload.eventType);
+          const fresh = await this.fetchBellSchedules();
+          onChange(fresh);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }
+
   // 7. Mutations
   public async triggerInstantOverride(
     command: LiveOverridePayload['command'],
@@ -519,11 +561,19 @@ export class SupabaseService {
     track: Omit<IntermissionTrack, 'id' | 'duration_formatted'>
   ): Promise<IntermissionTrack | null> {
     try {
+      const validSession = track.session === 'NOON_BREAK' ? 'NOON_BREAK' : 'MORNING_BREAK';
+      const validCategories = ['PROVERB', 'STORY', 'NASHEED', 'DUAA', 'QURAN'];
+      const validCategory = validCategories.includes(track.category) ? track.category : 'NASHEED';
+
+      if (track.audio_url && track.audio_url.startsWith('blob:')) {
+        console.warn('⚠️ [SupabaseService] Warning: Storing blob URL in cloud database will prevent other devices from accessing the audio!');
+      }
+
       const { data, error } = await supabase.from('intermission_tracks').insert({
-        session: track.session,
-        category: track.category,
-        title: track.title,
-        speaker_or_artist: track.speaker_or_artist,
+        session: validSession,
+        category: validCategory,
+        title: track.title.trim() || 'فقرة إذاعية بدون عنوان',
+        speaker_or_artist: track.speaker_or_artist?.trim() || 'الإذاعة المدرسية',
         duration_seconds: track.duration_seconds || 120,
         audio_url: track.audio_url || 'https://cdn.smartbell.local/audio/custom_track.mp3',
         play_order: track.play_order || 1,
@@ -531,12 +581,12 @@ export class SupabaseService {
       }).select().single();
 
       if (error) {
-        console.error('❌ [SupabaseService] Error creating intermission track:', error);
+        console.error('❌ [SupabaseService] Error creating intermission track:', error.message, error.details);
         return null;
       }
       return data as IntermissionTrack;
-    } catch (err) {
-      console.error('❌ [SupabaseService] Exception creating intermission track:', err);
+    } catch (err: any) {
+      console.error('❌ [SupabaseService] Exception creating intermission track:', err?.message || err);
       return null;
     }
   }
@@ -683,14 +733,22 @@ export class SupabaseService {
         });
 
       if (error) {
-        console.error('❌ [SupabaseService] Storage upload error:', error);
-        if (error.message.includes('Bucket not found') || (error as any).code === 'NoSuchBucket') {
-          return {
-            success: false,
-            error: `سلة التخزين '${bucketName}' غير موجودة في Supabase. يرجى تفعيلها وجعلها Public.`,
-          };
+        console.error('❌ [SupabaseService] Storage upload error:', error.message);
+        let userMessage = error.message;
+        if (
+          error.message.includes('Bucket not found') || 
+          (error as any).code === 'NoSuchBucket' ||
+          error.message.includes('bucket')
+        ) {
+          userMessage = `سلة التخزين '${bucketName}' غير موجودة أو غير مهيأة في Supabase. يرجى إنشاء السلة وتنفيذ سكريبت RLS المرفق في Supabase SQL Editor.`;
+        } else if (
+          error.message.includes('row-level security') || 
+          error.message.includes('policy') || 
+          (error as any).statusCode === 403
+        ) {
+          userMessage = `سياسات الأمان RLS تمنع الرفع لسلة '${bucketName}'. يرجى تفعيل سياسات Public Insert في Supabase SQL Editor.`;
         }
-        return { success: false, error: error.message };
+        return { success: false, error: userMessage };
       }
 
       const { data: publicUrlData } = supabase.storage

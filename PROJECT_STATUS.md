@@ -4,11 +4,30 @@
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
-- **الإصدار النشط:** v2.7.3 (Layout Polish, SVG Icon System & Zero-Font-Ligature Failure)
+- **الإصدار النشط:** v2.7.4 (Cross-Device Cloud Audio Sync, Realtime Streaming & Mobile Media Library)
 
 ---
 
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
+
+### 🔊 المزامنة السحابية اللحظية للمقاطع ومكتبة وسائط الهاتف الأصلية (v2.7.4)
+- **معالجة السبب الجذري لانحصار المقاطع في الحاسوب:**
+  - تم كشف أن رفع الملفات كان يفشل لعدم تهيئة سلة `smartbell-audio` في Storage، مما كان يدفع الكود القديم للارتداد سراً إلى حفظ رابط مؤقت محلي (`blob:...`) داخل قاعدة بيانات Supabase. هذا الرابط كان عديم الفائدة تماماً على الهاتف لأنه موجود فقط في ذاكرة RAM لمتصفح الحاسوب.
+  - تم إيقاف هذا السلوك نهائياً: يُشترط الآن نجاح الرفع السحابي والحصول على رابط عام دائم (`Public HTTPS URL`) قبل إدراج أي سجل في `intermission_tracks`.
+  - طباعة وتوضيح أخطاء Supabase Storage في Console و Toast مع توجيه دقيق لتهيئة السلة والسياسات.
+- **تفعيل الاستماع اللحظي (Realtime Subscription):**
+  - إضافة `subscribeToIntermissionTracks` و `subscribeToBellSchedules` في `supabaseService.ts` وربطها في `App.tsx`.
+  - بمجرد رفع أي مقطع من الحاسوب، يظهر فورياً على جميع الهواتف والمتصفحات المفتوحة دون الحاجة لتحديث الصفحة.
+- **شاشة مكتبة الأناشيد والوسائط الأصلية في تطبيق الهاتف (`MediaLibraryScreen`):**
+  - إضافة شاشة مخصصة في فلاتر تستعلم مباشرة عن المقاطع من جدول `intermission_tracks` في Supabase عند الفتح.
+  - دعم الاستماع والمعاينة التجريبية الفورية لأي مقطع سحابي عبر `audioplayers` على الهاتف.
+  - إضافة زر وصول سريع في الواجهة الرئيسية للهاتف لفتح المكتبة بنقرة واحدة.
+- **تحديث سكريبت تهيئة السلة وسياسات الأمان RLS:**
+  - تحديث `create_storage_bucket.sql` ليشمل إنشاء السلة `smartbell-audio`، سياسات القراءة والرفع العامة للجميع، وتفعيل Replication لـ Realtime.
+  - تصحيح الروابط المؤقتة (`blob:`) السابقة في قاعدة البيانات.
+- **البناء والنشر الرسمي:**
+  - بناء وتجميع حزمة أندرويد الرسمية (`smartbell-controller.apk` بحجم 50.8MB) ووضعها في مجلد التحميل العام.
+  - إعادة تجميع ونشر الويب على Firebase Hosting بنجاح.
 
 ### 🎨 إصلاح التنسيق الشامل ونظام أيقونات SVG ذاتي التشغيل (v2.7.3)
 - **تشخيص ومعالجة ظهور أسماء الأيقونات كنصوص إنجليزية ممتدة (Ligature Rendering Failure):**

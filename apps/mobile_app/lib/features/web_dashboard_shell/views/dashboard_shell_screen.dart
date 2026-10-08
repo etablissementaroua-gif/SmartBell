@@ -4,6 +4,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../media_library/views/media_library_screen.dart';
 
 /// غلاف تطبيق الهاتف: يعرض لوحة تحكم SmartBell نفسها المنشورة على الويب
 /// لضمان التطابق التام (واجهةً ومنطقاً وبيانات) مع نسخة الحاسوب.
@@ -134,6 +135,48 @@ class _DashboardShellScreenState extends State<DashboardShellScreen> {
                     await _openExternally(request.url);
                   },
                 ),
+
+                // زر الوصول السريع لمكتبة الأناشيد والوسائط السحابية
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Material(
+                    elevation: 5,
+                    borderRadius: BorderRadius.circular(20),
+                    color: const Color(0xFF0F172A).withOpacity(0.92),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const MediaLibraryScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppTheme.tealPrimary.withOpacity(0.5)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.library_music_rounded, color: AppTheme.tealPrimary, size: 16),
+                            SizedBox(width: 6),
+                            Text(
+                              'مكتبة الأناشيد',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 if (_progress < 1 && !_hasError)
                   _LoadingOverlay(progress: _progress),
                 if (_hasError)

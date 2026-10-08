@@ -58,4 +58,34 @@ class SupabaseService {
       return false;
     }
   }
+
+  Future<List<Map<String, dynamic>>> fetchIntermissionTracks() async {
+    if (client == null) {
+      debugPrint("⚠️ [SupabaseService] Client not ready, initializing now...");
+      await init();
+      if (client == null) return [];
+    }
+
+    try {
+      final List<dynamic> response = await client!
+          .from('intermission_tracks')
+          .select('*')
+          .order('play_order', ascending: true);
+      debugPrint("🎵 [SupabaseService] Fetched ${response.length} tracks directly from cloud database");
+      return response.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    } catch (e) {
+      debugPrint("❌ [SupabaseService] Error fetching intermission tracks: $e");
+      return [];
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> streamIntermissionTracks() {
+    if (client == null) {
+      return Stream.value([]);
+    }
+    return client!
+        .from('intermission_tracks')
+        .stream(primaryKey: ['id'])
+        .order('play_order', ascending: true);
+  }
 }

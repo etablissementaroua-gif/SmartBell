@@ -98,21 +98,20 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
         setUploadProgress(`جاري رفع ${cleanTitle} سحابياً إلى Supabase Storage (${i + 1}/${files.length})...`);
         const uploadRes = await supabaseService.uploadAudioFile(file, 'smartbell-audio');
 
-        let finalAudioUrl = '';
-        if (uploadRes.success && uploadRes.publicUrl) {
-          finalAudioUrl = uploadRes.publicUrl;
-        } else {
-          console.warn('⚠️ Cloud upload failed, reason:', uploadRes.error);
+        if (!uploadRes.success || !uploadRes.publicUrl) {
+          console.error('❌ [Upload Error] Cloud upload failed:', uploadRes.error);
           if (onShowToast) {
             onShowToast(
-              'warning',
-              uploadRes.error || 'تعذر الرفع السحابي. يرجى التأكد من إنشاء bucket باسم smartbell-audio في Supabase.',
-              'تنبيه التخزين السحابي'
+              'error',
+              uploadRes.error || 'فشل الرفع السحابي. يرجى التأكد من تهيئة سلة smartbell-audio في Supabase.',
+              `خطأ رفع: ${file.name}`
             );
           }
-          // Fallback to local object URL only if cloud upload failed
-          finalAudioUrl = URL.createObjectURL(file);
+          // Do not write a dead blob URL to the shared database
+          continue;
         }
+
+        const finalAudioUrl = uploadRes.publicUrl;
 
         let createdId: string | undefined;
         if (onAddTrack) {
@@ -120,7 +119,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
             title: cleanTitle,
             category: assignedCategory,
             session: assignedSession,
-            speaker_or_artist: 'تسجيل مدرسي محلي',
+            speaker_or_artist: 'تسجيل مدرسي سحابي',
             duration_seconds: durationSec,
             audio_url: finalAudioUrl,
             play_order: tracks.length + successCount + 1,
@@ -128,7 +127,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           }, file);
         }
 
-        // Save local blob cache for offline playback on this device
+        // Cache local copy for immediate playback
         if (createdId) {
           await audioPlayerService.saveAudioBlob(createdId, file);
         }
@@ -143,7 +142,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
     setIsUploading(false);
     setUploadProgress('');
     if (successCount > 0 && onShowToast) {
-      onShowToast('success', `تمت إضافة وحفظ ${successCount} مقاطع صوتية بنجاح ومزامنتها سحابياً.`, 'اكتمال الرفع');
+      onShowToast('success', `تم رفع ومزامنة ${successCount} مقاطع صوتية سحابياً بنجاح عبر كافة الأجهزة والهواتف.`, 'اكتمال الرفع السحابي');
     }
   };
 

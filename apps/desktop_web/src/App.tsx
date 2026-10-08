@@ -102,9 +102,23 @@ export const App: React.FC = () => {
       }
     });
 
+    const unsubTracks = supabaseService.subscribeToIntermissionTracks((freshTracks) => {
+      if (!isMounted) return;
+      console.log('🔄 [App] Realtime synced intermission tracks count:', freshTracks.length);
+      setTracks(freshTracks);
+    });
+
+    const unsubSchedules = supabaseService.subscribeToBellSchedules((freshSchedules) => {
+      if (!isMounted) return;
+      console.log('🔄 [App] Realtime synced bell schedules count:', freshSchedules.length);
+      setSchedules(freshSchedules);
+    });
+
     return () => {
       isMounted = false;
       unsubOverrides();
+      unsubTracks();
+      unsubSchedules();
     };
   }, []);
 
