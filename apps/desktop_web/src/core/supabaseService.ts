@@ -712,7 +712,7 @@ export class SupabaseService {
       }
 
       const originalName = (file instanceof File ? file.name : customFileName) || 'audio_track.mp3';
-      const fileExt = originalName.split('.').pop() || 'mp3';
+      const fileExt = (originalName.split('.').pop() || 'mp3').toLowerCase();
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 7);
       
@@ -724,12 +724,25 @@ export class SupabaseService {
 
       const filePath = `tracks/${timestamp}_${cleanBase}_${randomSuffix}.${fileExt}`;
 
+      let mimeType = (file as any).type;
+      if (!mimeType || mimeType === 'application/octet-stream' || !mimeType.startsWith('audio/')) {
+        const mimeMap: Record<string, string> = {
+          mp3: 'audio/mpeg',
+          wav: 'audio/wav',
+          ogg: 'audio/ogg',
+          m4a: 'audio/x-m4a',
+          aac: 'audio/aac',
+          flac: 'audio/flac',
+        };
+        mimeType = mimeMap[fileExt] || 'audio/mpeg';
+      }
+
       const { error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
-          contentType: (file as any).type || 'audio/mpeg',
+          contentType: mimeType,
         });
 
       if (error) {
