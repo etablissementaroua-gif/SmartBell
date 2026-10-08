@@ -55,7 +55,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      setUploadProgress(`جاري معالجة: ${file.name} (${i + 1}/${files.length})...`);
+      setUploadProgress(`جاري قياس مدة: ${file.name} (${i + 1}/${files.length})...`);
 
       const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(file.name);
       if (!isAudio) {
@@ -64,8 +64,8 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
       }
 
       try {
-        const objectUrl = URL.createObjectURL(file);
-        const audio = new Audio(objectUrl);
+        const tempObjectUrl = URL.createObjectURL(file);
+        const audio = new Audio(tempObjectUrl);
 
         const durationSec = await new Promise<number>((resolve) => {
           audio.onloadedmetadata = () => {
@@ -75,6 +75,9 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           audio.onerror = () => resolve(120);
           setTimeout(() => resolve(120), 2500);
         });
+
+        // Revoke temporary measuring URL to prevent memory leaks
+        URL.revokeObjectURL(tempObjectUrl);
 
         const cleanTitle = file.name.replace(/\.[^/.]+$/, '').trim() || 'تسجيل صوتي مدرسي';
         let assignedCategory: IntermissionTrack['category'] = 'NASHEED';
@@ -91,6 +94,26 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
           assignedSession = 'MORNING_BREAK';
         }
 
+        // Upload directly to Supabase Cloud Storage (smartbell-audio bucket)
+        setUploadProgress(`جاري رفع ${cleanTitle} سحابياً إلى Supabase Storage (${i + 1}/${files.length})...`);
+        const uploadRes = await supabaseService.uploadAudioFile(file, 'smartbell-audio');
+
+        let finalAudioUrl = '';
+        if (uploadRes.success && uploadRes.publicUrl) {
+          finalAudioUrl = uploadRes.publicUrl;
+        } else {
+          console.warn('⚠️ Cloud upload failed, reason:', uploadRes.error);
+          if (onShowToast) {
+            onShowToast(
+              'warning',
+              uploadRes.error || 'تعذر الرفع السحابي. يرجى التأكد من إنشاء bucket باسم smartbell-audio في Supabase.',
+              'تنبيه التخزين السحابي'
+            );
+          }
+          // Fallback to local object URL only if cloud upload failed
+          finalAudioUrl = URL.createObjectURL(file);
+        }
+
         let createdId: string | undefined;
         if (onAddTrack) {
           createdId = await onAddTrack({
@@ -99,11 +122,13 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
             session: assignedSession,
             speaker_or_artist: 'تسجيل مدرسي محلي',
             duration_seconds: durationSec,
-            audio_url: objectUrl,
+            audio_url: finalAudioUrl,
             play_order: tracks.length + successCount + 1,
             is_active: true,
           }, file);
         }
+
+        // Save local blob cache for offline playback on this device
         if (createdId) {
           await audioPlayerService.saveAudioBlob(createdId, file);
         }
@@ -118,7 +143,7 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
     setIsUploading(false);
     setUploadProgress('');
     if (successCount > 0 && onShowToast) {
-      onShowToast('success', `تمت إضافة وحفظ ${successCount} ملفات صوتية بنجاح في المكتبة.`, 'اكتمال الرفع');
+      onShowToast('success', `تمت إضافة وحفظ ${successCount} مقاطع صوتية بنجاح ومزامنتها سحابياً.`, 'اكتمال الرفع');
     }
   };
 

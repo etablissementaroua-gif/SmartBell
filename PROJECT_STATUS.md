@@ -1,14 +1,29 @@
 # 📌 حالة المشروع وتوثيق الإنجاز: منظومة SmartBell
 
-- **تاريخ آخر تحديث:** 2026-10-07
+- **تاريخ آخر تحديث:** 2026-10-08
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
-- **الإصدار النشط:** v2.7.1 (Mobile Layout Polish, Adhan Scheduling Engine & Background WakeLock)
+- **الإصدار النشط:** v2.7.2 (Supabase Cloud Audio Storage & Cross-Device Audio Sync)
 
 ---
 
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
+
+### ☁️ ربط تخزين الوسائط بسحابة Supabase ومزامنة المقاطع الصوتية بين جميع الأجهزة (v2.7.2)
+- **تشخيص ومعالجة انحصار الملفات الصوتية في الحاسوب المحلي:**
+  - معالجة المشكلة التي كانت تؤدي لحفظ المقاطع المرفوعة داخل ذاكرة المتصفح المحلية فقط (`IndexedDB`) بروابط وهمية مؤقتة (`blob:...`) مما كان يمنع تشغيل الأغنية أو الأنشودة عند فتح التطبيق من الهاتف أو جهاز آخر.
+- **تكامل التخزين السحابي (Supabase Cloud Storage - `smartbell-audio`):**
+  - إضافة دالة `uploadAudioFile` في `supabaseService.ts` لرفع الملفات الصوتية مباشرة إلى سلة التخزين السحابية `smartbell-audio`.
+  - معالجة أسماء الملفات وتوليد مسارات فريدة ومحمية من التعارض `tracks/{timestamp}_{cleanName}_{random}.{ext}`.
+  - استخراج الرابط السحابي العام الدائم (`Public URL`) وحفظه في جدول `intermission_tracks.audio_url` في Supabase.
+- **تحديث مشغل الصوت (`audioPlayerService.ts`):**
+  - إعطاء الأولوية المباشرة للروابط السحابية العامة (`https://...`) لتشغيل الصوت بسلاسة عبر جميع المتصفحات والهواتف ومكبرات الصوت المدرسية الذكية بالتزامن.
+  - إبقاء `IndexedDB` فقط كذاكرة كاش محلية اختيارية دون التأثير على مشاركة الملفات بين الأجهزة.
+- **تحديث ترحيل قاعدة البيانات وسياسات الأمان:**
+  - تحديث `backend/supabase/migrations/create_storage_bucket.sql` لتهيئة سلة `smartbell-audio` العامة وسياسات القراءة والرفع للجميع (Public).
+- **إعادة البناء والنشر الفوري:**
+  - تجميع الشيفرة بنجاح ونشر التحديث على استضافة Firebase Hosting (`https://smartbell-9ec8b.web.app`).
 
 ### 🕌 دعم أذان الصلاة وإصلاح التنسيق والتشغيل في الخلفية (v2.7.1)
 - **إصلاح تشوهات التنسيق وتسرب الـ JSON:**

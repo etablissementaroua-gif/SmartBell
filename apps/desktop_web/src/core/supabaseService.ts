@@ -649,6 +649,67 @@ export class SupabaseService {
       action: 'PING',
     });
   }
+
+  // 12. Upload Audio File to Supabase Storage
+  public async uploadAudioFile(
+    file: File | Blob,
+    bucketName: string = 'smartbell-audio',
+    customFileName?: string
+  ): Promise<{ success: boolean; publicUrl?: string; error?: string }> {
+    try {
+      if (!isSupabaseConfigured()) {
+        return { success: false, error: 'الاتصال بـ Supabase غير مهيأ.' };
+      }
+
+      const originalName = (file instanceof File ? file.name : customFileName) || 'audio_track.mp3';
+      const fileExt = originalName.split('.').pop() || 'mp3';
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 7);
+      
+      // Clean slug keeping alphanumeric characters
+      const cleanBase = originalName
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '_')
+        .slice(0, 30);
+
+      const filePath = `tracks/${timestamp}_${cleanBase}_${randomSuffix}.${fileExt}`;
+
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: (file as any).type || 'audio/mpeg',
+        });
+
+      if (error) {
+        console.error('❌ [SupabaseService] Storage upload error:', error);
+        if (error.message.includes('Bucket not found') || (error as any).code === 'NoSuchBucket') {
+          return {
+            success: false,
+            error: `سلة التخزين '${bucketName}' غير موجودة في Supabase. يرجى تفعيلها وجعلها Public.`,
+          };
+        }
+        return { success: false, error: error.message };
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+
+      if (!publicUrlData?.publicUrl) {
+        return { success: false, error: 'تعذر جلب الرابط العام للملف المرفوع.' };
+      }
+
+      return {
+        success: true,
+        publicUrl: publicUrlData.publicUrl,
+      };
+    } catch (err: any) {
+      console.error('❌ [SupabaseService] Exception during audio upload:', err);
+      return { success: false, error: err?.message || 'خطأ غير متوقع أثناء رفع الملف.' };
+    }
+  }
 }
 
 export const supabaseService = SupabaseService.getInstance();

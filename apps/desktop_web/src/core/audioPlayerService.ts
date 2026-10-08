@@ -452,9 +452,14 @@ class AudioPlayerService {
     this.isPlaying = true;
     this.notifyListeners();
 
-    // Check if we have a locally stored blob in IndexedDB (by id or title)
+    // 1. Prioritize Cloud Public URL (Supabase Storage or HTTPS audio CDN)
     let audioSrc: string | null = null;
-    if (track.id) {
+    if (track.audio_url && /^https?:\/\//i.test(track.audio_url.trim()) && !track.audio_url.includes('cdn.smartbell.local')) {
+      audioSrc = track.audio_url.trim();
+    }
+
+    // 2. Check local IndexedDB storage if no cloud URL or for offline cache
+    if (!audioSrc && track.id) {
       const localBlob = await this.getAudioBlob(track.id);
       if (localBlob) {
         audioSrc = URL.createObjectURL(localBlob);
@@ -467,7 +472,7 @@ class AudioPlayerService {
       }
     }
 
-    // Otherwise check track.audio_url
+    // 3. Fallback to track.audio_url if available
     if (!audioSrc && track.audio_url && track.audio_url.trim()) {
       const rawUrl = track.audio_url.trim();
       if (!rawUrl.startsWith('blob:')) {
