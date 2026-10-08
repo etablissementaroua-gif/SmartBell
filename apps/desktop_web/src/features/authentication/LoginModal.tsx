@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '../../components/common/Icon';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           onClick={onClose}
           className="absolute top-4 left-4 text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
         >
-          <span className="material-symbols-outlined text-xl">close</span>
+          <Icon name="close" size={20} />
         </button>
 
         {/* Logo and Brand */}
@@ -58,8 +59,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-300">البريد الإلكتروني / اسم المستخدم:</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute right-3 text-teal-accent text-lg">
-                person_outline
+              <span className="absolute right-3 text-teal-accent flex items-center pointer-events-none">
+                <Icon name="person" size={18} />
               </span>
               <input
                 type="text"
@@ -75,8 +76,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-300">كلمة المرور:</label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute right-3 text-teal-accent text-lg">
-                lock_outline
+              <span className="absolute right-3 text-teal-accent flex items-center pointer-events-none">
+                <Icon name="lock" size={18} />
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -89,11 +90,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 text-slate-400 hover:text-white"
+                className="absolute left-3 text-slate-400 hover:text-white flex items-center"
               >
-                <span className="material-symbols-outlined text-lg">
-                  {showPassword ? 'visibility_off' : 'visibility'}
-                </span>
+                <Icon name={showPassword ? 'visibility_off' : 'visibility'} size={18} />
               </button>
             </div>
           </div>
@@ -105,7 +104,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           >
             {isLoading ? (
               <>
-                <span className="material-symbols-outlined text-lg animate-spin">refresh</span>
+                <Icon name="refresh" size={18} className="animate-spin" />
                 <span>جاري تسجيل الدخول...</span>
               </>
             ) : (

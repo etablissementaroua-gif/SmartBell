@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Icon } from './common/Icon';
 
 interface HeaderProps {
   masterVolume: number;
@@ -36,9 +37,9 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="fixed top-0 right-0 lg:right-72 left-0 h-16 bg-surface-container-lowest/95 backdrop-blur-xl z-30 border-b border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-3 sm:px-space-lg lg:px-space-xl transition-all">
-      {/* Visual Right side: Hamburger (mobile only) + Clock + Hardware status */}
-      <div className="flex items-center gap-2 sm:gap-space-md">
+    <header className="fixed top-0 right-0 lg:right-72 left-0 h-16 bg-surface-container-lowest/95 backdrop-blur-xl z-30 border-b border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-3 sm:px-space-md lg:px-space-lg transition-all select-none">
+      {/* Right side (RTL Start): Hamburger + Clock + Hardware Status */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Mobile Drawer Hamburger Button */}
         <button
           type="button"
@@ -47,81 +48,76 @@ export const Header: React.FC<HeaderProps> = ({
           title="فتح القائمة الجانبية"
           aria-label="القائمة"
         >
-          <span className="material-symbols-outlined text-2xl">menu</span>
+          <Icon name="menu" size={22} />
         </button>
 
         {/* Digital Clock */}
-        <div className="flex items-center gap-1.5 sm:gap-space-sm bg-surface-container-low border border-surface-container px-2.5 sm:px-space-md py-1 sm:py-space-xs rounded-full shadow-inner">
-          <span className="material-symbols-outlined text-teal-dark text-base sm:text-lg">schedule</span>
-          <span className="font-mono text-xs sm:text-label-lg text-on-surface tracking-wider font-bold">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-surface-container-low border border-surface-container px-3 py-1 rounded-full shadow-inner">
+          <Icon name="schedule" className="text-teal-dark shrink-0" size={17} />
+          <span className="font-mono text-xs sm:text-sm text-on-surface tracking-wider font-bold whitespace-nowrap">
             {timeString || '10:14:25 ص'}
           </span>
         </div>
 
         {/* Hardware Daemon Active Status */}
-        <div className="hidden xl:flex items-center gap-space-sm bg-surface-container-low border border-surface-container px-space-md py-space-xs rounded-full">
+        <div className="hidden lg:flex items-center gap-2 bg-surface-container-low border border-surface-container px-3 py-1 rounded-full shrink-0">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-container opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-dark"></span>
           </span>
-          <span className="text-body-sm text-on-surface font-medium">
-            خدمة العتاد: <span className="font-mono text-xs font-semibold text-teal-dark">smartbell-daemon.service</span> (نشط)
+          <span className="text-xs text-on-surface font-medium whitespace-nowrap">
+            خدمة العتاد: <span className="font-mono font-semibold text-teal-dark">نشط</span>
           </span>
         </div>
       </div>
 
-      {/* Visual Left side: APK Download, Volume, Emergency Mute, and User Profile */}
-      <div className="flex items-center gap-2 sm:gap-space-md">
-        {/* Supervisor APK Download Button (hidden on phone, visible on md+) */}
+      {/* Left side (RTL End): APK Download, Volume, Emergency Mute, and User Profile */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Supervisor APK Download Button */}
         <a
           href="/downloads/smartbell-controller.apk"
           download="smartbell-controller.apk"
-          className="hidden md:flex group relative items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-teal-dark/50 hover:border-teal-dark shadow-sm hover:shadow-[0_0_15px_rgba(20,184,166,0.35)] transition-all active:scale-95 text-on-surface"
+          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-teal-dark/40 hover:border-teal-dark shadow-sm transition-all active:scale-95 text-on-surface shrink-0"
           title="تثبيت تطبيق SmartBell Controller على هواتف أندرويد"
         >
-          <span className="material-symbols-outlined text-teal-dark group-hover:animate-bounce text-xl">
-            phone_android
+          <Icon name="phone_android" className="text-teal-dark shrink-0" size={16} />
+          <span className="text-xs font-bold text-teal-dark whitespace-nowrap">
+            تطبيق المشرف
           </span>
-          <span className="hidden xl:inline text-xs font-bold text-teal-dark group-hover:text-teal-accent transition-colors">
-            تحميل تطبيق المشرف (APK)
-          </span>
-          <span className="xl:hidden inline text-xs font-bold text-teal-dark">
-            APK
-          </span>
-          <span className="material-symbols-outlined text-xs text-on-surface-variant group-hover:text-teal-dark">
-            download
-          </span>
+          <Icon name="download" className="text-on-surface-variant shrink-0" size={14} />
         </a>
 
         {/* Master Volume Controller */}
-        <div className="hidden sm:flex items-center gap-space-sm bg-surface-container-low border border-surface-container px-space-md py-space-xs rounded-xl shadow-sm">
-          <span className="material-symbols-outlined text-teal-dark text-lg">
-            {isEmergencyMuted || masterVolume === 0 ? 'volume_off' : masterVolume < 40 ? 'volume_down' : 'volume_up'}
-          </span>
-          <div className="w-16 md:w-24 bg-surface-container h-2 rounded-full overflow-hidden flex items-center">
+        <div className="hidden sm:flex items-center gap-2 bg-surface-container-low border border-surface-container px-3 py-1 rounded-xl shadow-sm shrink-0">
+          <Icon
+            name={isEmergencyMuted || masterVolume === 0 ? 'volume_off' : masterVolume < 40 ? 'volume_down' : 'volume_up'}
+            className="text-teal-dark shrink-0"
+            size={18}
+          />
+          <div className="relative w-16 md:w-20 bg-surface-container h-2 rounded-full overflow-hidden flex items-center">
             <div
               className={`h-full rounded-full transition-all duration-300 ${isEmergencyMuted ? 'bg-error w-0' : 'bg-teal-dark'}`}
               style={{ width: isEmergencyMuted ? '0%' : `${masterVolume}%` }}
             ></div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={isEmergencyMuted ? 0 : masterVolume}
+              onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              title="تحكم في مستوى الصوت الرئيسي"
+            />
           </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={isEmergencyMuted ? 0 : masterVolume}
-            onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
-            className="w-16 h-1.5 opacity-0 absolute cursor-pointer"
-            title="تحكم في مستوى الصوت الرئيسي"
-          />
-          <span className="text-label-sm text-on-surface-variant font-mono font-bold min-w-[3ch]">
+          <span className="text-xs text-on-surface-variant font-mono font-bold min-w-[3ch] text-left">
             {isEmergencyMuted ? '0%' : `${masterVolume}%`}
           </span>
         </div>
 
-        {/* Emergency Stop Button (ALWAYS visible on all screens) */}
+        {/* Emergency Stop Button */}
         <button
           onClick={onEmergencyMute}
-          className={`flex items-center justify-center h-10 w-10 rounded-xl transition-all shadow-sm active:scale-95 ${
+          className={`flex items-center justify-center h-10 w-10 rounded-xl transition-all shadow-sm active:scale-95 shrink-0 ${
             isEmergencyMuted
               ? 'bg-error text-on-error animate-pulse ring-4 ring-error/30'
               : 'bg-error-container text-on-error-container hover:bg-error hover:text-on-error'
@@ -129,19 +125,17 @@ export const Header: React.FC<HeaderProps> = ({
           title={isEmergencyMuted ? 'إلغاء صمت الطوارئ' : 'إيقاف الطوارئ الفوري لكافة المكبرات'}
           type="button"
         >
-          <span className="material-symbols-outlined text-xl">
-            {isEmergencyMuted ? 'volume_up' : 'volume_off'}
-          </span>
+          <Icon name={isEmergencyMuted ? 'volume_up' : 'volume_off'} size={20} />
         </button>
 
         {/* User Profile Pill */}
-        <div className="hidden sm:flex items-center gap-space-sm pr-space-sm bg-surface-container-low border border-surface-container rounded-full pl-space-xs py-space-xs shadow-sm">
-          <div className="w-8 h-8 rounded-full bg-primary-container text-teal-accent flex items-center justify-center font-bold text-sm shadow-inner">
-            <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+        <div className="hidden sm:flex items-center gap-2 pr-2 bg-surface-container-low border border-surface-container rounded-full pl-3 py-1 shadow-sm shrink-0">
+          <div className="w-7 h-7 rounded-full bg-primary-container text-teal-accent flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
+            <Icon name="admin_panel_settings" size={16} />
           </div>
-          <div className="hidden md:flex flex-col pl-space-sm">
-            <span className="text-label-md text-on-surface leading-tight font-bold">المشرف الإذاعي</span>
-            <span className="text-[11px] text-teal-dark font-medium leading-none">مدير البث المباشر</span>
+          <div className="flex flex-col">
+            <span className="text-xs text-on-surface leading-tight font-bold whitespace-nowrap">المشرف الإذاعي</span>
+            <span className="text-[10px] text-teal-dark font-medium leading-none whitespace-nowrap">مدير البث</span>
           </div>
         </div>
       </div>

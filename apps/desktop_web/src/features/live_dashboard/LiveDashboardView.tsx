@@ -4,6 +4,7 @@ import { OverridesPanel } from './components/OverridesPanel';
 import { TimelineCountdown } from './components/TimelineCountdown';
 import { BellSchedule, IntermissionTrack } from '../../types';
 import { supabaseService } from '../../core/supabaseService';
+import { Icon } from '../../components/common/Icon';
 
 interface LiveDashboardViewProps {
   schedules: BellSchedule[];
@@ -43,7 +44,7 @@ export const LiveDashboardView: React.FC<LiveDashboardViewProps> = ({
       {isEmergencyMuted && (
         <div className="bg-error text-on-error p-4 rounded-2xl shadow-lg flex items-center justify-between animate-pulse">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-3xl">volume_off</span>
+            <Icon name="volume_off" size={32} />
             <div>
               <h4 className="font-bold text-base">صمت الطوارئ العام مفعل حالياً!</h4>
               <p className="text-xs opacity-90">تم كتم جميع الإذاعات والأجراس والميكروفونات عن كافة أرجاء المؤسسة.</p>

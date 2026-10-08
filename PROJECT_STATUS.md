@@ -4,11 +4,23 @@
 - **المعمارية المعتمدة:** Monorepo - Feature-First (Common Closure Principle - CCP)
 - **المستودع الرسمي:** `https://github.com/etablissementaroua-gif/SmartBell.git`
 - **بيئة الاستضافة والإنتاج:** [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app) (Firebase Hosting: `smartbell-9ec8b`)
-- **الإصدار النشط:** v2.7.2 (Supabase Cloud Audio Storage & Cross-Device Audio Sync)
+- **الإصدار النشط:** v2.7.3 (Layout Polish, SVG Icon System & Zero-Font-Ligature Failure)
 
 ---
 
 ## 🌟 المكونات المكتملة والمحققة (Completed Features)
+
+### 🎨 إصلاح التنسيق الشامل ونظام أيقونات SVG ذاتي التشغيل (v2.7.3)
+- **تشخيص ومعالجة ظهور أسماء الأيقونات كنصوص إنجليزية ممتدة (Ligature Rendering Failure):**
+  - تم تشخيص ظهور كلمات مثل `volume_up` و `admin_panel_settings` و `skip_next` و `emergency_share` كنصوص إنجليزية تشوه الواجهة، بسبب عدم ضبط محدد `.material-symbols-outlined` بأولوية الخط الصارمة في `index.css` وتعارضه مع خط `Cairo`.
+  - تم إنشاء مكون أيقونات أصلي فائق السرعة وعديم التبعيات الخارجيّة `Icon.tsx` مبني على رسومات المتجهات النقية (Pure SVG Vectors).
+  - أصبح المكون يعمل بنسبة 100% في وضع عدم الاتصال (Offline) ومحصناً ضد حواجب الإعلانات (Brave Shields / Adblockers) أو بطء تحميل خطوط Google CDN.
+- **حل مشاكل التداخل الأفقي للشاشات المتوسطة والمحمولة (1200px - 1400px):**
+  - إعادة هندسة شريط الرأس `Header.tsx`: تحويل الأزرار إلى مقاسات مرنة ومضغوطة لمنع تصادم وتراكم العناصر (مستوى الصوت، تنزيل الـ APK، مؤشر الخادم المحلي daemon، وزر كتم الطوارئ).
+  - ضبط أبعاد مشغل الوسائط `NowPlayingCard.tsx` بأبعاد موحدة للأزرار (`w-9 h-9` و `w-11 h-11`) ومنع انكسار صفوف التحكم (`flex-nowrap`).
+  - تحديث بطاقات `TimelineCountdown.tsx`، `OverridesPanel.tsx`، `MobileBottomNav.tsx`، `Toast.tsx`، `AudioUnlockBanner.tsx` و `LoginModal.tsx` لتعمل بالأيقونات المتجهية النقية المتناسقة.
+- **البناء والنشر المباشر على Firebase Hosting:**
+  - تم بنجاح تجميع حزمة الإنتاج بواسطة Vite و TypeScript بدون أي تحذيرات أو أخطاء برمجية ونشرها فورياً على [https://smartbell-9ec8b.web.app](https://smartbell-9ec8b.web.app).
 
 ### ☁️ ربط تخزين الوسائط بسحابة Supabase ومزامنة المقاطع الصوتية بين جميع الأجهزة (v2.7.2)
 - **تشخيص ومعالجة انحصار الملفات الصوتية في الحاسوب المحلي:**

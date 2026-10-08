@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BellSchedule, parseScheduleDetails } from '../../../types';
 import { audioPlayerService, AudioPlayerState } from '../../../core/audioPlayerService';
+import { Icon } from '../../../components/common/Icon';
 
 interface TimelineCountdownProps {
   schedules: BellSchedule[];
@@ -147,7 +148,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
               : 'bg-secondary-fixed text-on-secondary-fixed'
           }`}>
             {(activeNowSchedule || audioState.isBellRinging) && (
-              <span className="material-symbols-outlined text-sm animate-spin">notifications_active</span>
+              <Icon name="notifications_active" size={14} className="animate-spin" />
             )}
             {activeNowSchedule || audioState.isBellRinging
               ? '🔔 جاري انطلاق الموعد ورنين الجرس الآن!'
@@ -167,7 +168,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
           {nextMeta.badge && (
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${nextMeta.badge.style}`}>
-                <span className="material-symbols-outlined text-xs">{nextMeta.badge.icon}</span>
+                <Icon name={nextMeta.badge.icon} size={12} />
                 <span>{nextMeta.badge.label}</span>
               </span>
             </div>
@@ -215,7 +216,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
         {/* Bottom Time and Quick Edit */}
         <div className="flex items-center justify-between pt-2 border-t border-white/10 z-10">
           <div className="flex items-center gap-1.5 text-xs text-slate-300">
-            <span className="material-symbols-outlined text-sm text-teal-accent">alarm</span>
+            <Icon name="schedule" size={14} className="text-teal-accent" />
             <span>
               {hasSchedules && nextSchedule ? (
                 <>الموعد: <strong className="text-white font-mono">{nextSchedule.bell_time}</strong></>
@@ -238,7 +239,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
       <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-dark text-xl">timeline</span>
+            <Icon name="timeline" size={20} className="text-teal-dark" />
             <h4 className="font-bold text-[15px] text-on-surface">الجدول اليومي التتابعي</h4>
           </div>
           <span className="text-[11px] font-bold text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full">
@@ -272,17 +273,20 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                         : 'bg-surface-container-highest text-on-surface-variant'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[13px]">
-                      {isCurrentlyRinging
-                        ? 'volume_up'
-                        : isCompleted
-                        ? 'check'
-                        : isCurrent
-                        ? 'notifications_active'
-                        : meta.isAdhan
-                        ? 'mosque'
-                        : 'schedule'}
-                    </span>
+                    <Icon
+                      name={
+                        isCurrentlyRinging
+                          ? 'volume_up'
+                          : isCompleted
+                          ? 'check'
+                          : isCurrent
+                          ? 'notifications_active'
+                          : meta.isAdhan
+                          ? 'mosque'
+                          : 'schedule'
+                      }
+                      size={12}
+                    />
                   </div>
 
                   {/* Content Box */}
@@ -307,7 +311,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
                         )}
                         {meta.badge && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold border ${meta.badge.style}`}>
-                            <span className="material-symbols-outlined text-[11px]">{meta.badge.icon}</span>
+                            <Icon name={meta.badge.icon} size={11} />
                             <span>{meta.badge.label}</span>
                           </span>
                         )}
@@ -340,7 +344,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
 
         ) : (
           <div className="py-8 px-4 bg-surface-container-low rounded-xl border border-dashed border-surface-container-highest flex flex-col items-center justify-center text-center gap-2.5">
-            <span className="material-symbols-outlined text-4xl text-on-surface-variant/50">event_busy</span>
+            <Icon name="event_busy" size={40} className="text-on-surface-variant/50" />
             <p className="text-sm font-bold text-on-surface">لا توجد أجراس مجدولة حالياً، يرجى إضافة مواعيد الحصص</p>
             <p className="text-xs text-on-surface-variant max-w-[280px]">
               النظام جاهز ونظيف تماماً لإدخال مواعيد الحصص وفترات الاستراحة الخاصة بمؤسستكم التعليمية.
@@ -354,7 +358,7 @@ export const TimelineCountdown: React.FC<TimelineCountdownProps> = ({
           onClick={onOpenSchedules}
           className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-highest text-on-surface font-bold text-xs transition-colors border border-surface-container-high"
         >
-          <span className="material-symbols-outlined text-base text-teal-dark">calendar_month</span>
+          <Icon name="calendar_month" size={16} className="text-teal-dark" />
           <span>{hasSchedules ? 'عرض وتعديل جدول الأجراس الكامل' : 'إضافة مواعيد الحصص المدرسية'}</span>
         </button>
       </div>

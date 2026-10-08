@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IntermissionTrack } from '../../../types';
 import { supabaseService } from '../../../core/supabaseService';
 import { audioPlayerService } from '../../../core/audioPlayerService';
+import { Icon } from '../../../components/common/Icon';
 
 interface NowPlayingCardProps {
   tracks: IntermissionTrack[];
@@ -224,7 +225,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         {isBellRinging && (
           <div className="p-space-sm px-space-md rounded-xl bg-teal-dark/10 border border-teal-dark/30 flex items-center justify-between text-xs text-teal-dark font-bold animate-pulse">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-lg">notifications_active</span>
+              <Icon name="notifications_active" size={18} />
               <span>جاري رنين جرس {chainedSessionName || 'الاستراحة'} المدرسية — ستبدأ الإذاعة تلقائياً</span>
             </div>
             <span className="font-mono bg-teal-dark text-white px-2 py-0.5 rounded-lg text-xs shadow-xs">
@@ -276,65 +277,63 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
         </div>
 
         {/* Player Controls */}
-        <div className="flex items-center justify-center gap-space-lg py-1">
+        <div className="flex items-center justify-center gap-3 sm:gap-4 py-1 flex-nowrap select-none">
           <button
             type="button"
             disabled={!hasTracks}
             onClick={toggleShuffle}
-            className={`transition-all p-1.5 rounded-lg active:scale-90 ${
+            className={`transition-all p-2 rounded-xl active:scale-90 flex items-center justify-center shrink-0 ${
               isShuffle
                 ? 'text-teal-dark bg-secondary-container/50 font-bold ring-1 ring-teal-dark/30 shadow-sm'
                 : 'text-on-surface-variant hover:text-teal-dark disabled:opacity-30'
             }`}
             title={isShuffle ? 'إلغاء التشغيل العشوائي' : 'تشغيل عشوائي'}
           >
-            <span className="material-symbols-outlined text-xl">shuffle</span>
+            <Icon name="shuffle" size={18} />
           </button>
           <button
             type="button"
             disabled={!hasTracks || currentTrackIndex === 0}
             onClick={handlePrevTrack}
-            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1 active:scale-90"
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-2 rounded-xl active:scale-90 flex items-center justify-center shrink-0"
             title="المقطع السابق"
           >
-            <span className="material-symbols-outlined text-2xl">skip_previous</span>
+            <Icon name="skip_previous" size={22} />
           </button>
           <button
             type="button"
             disabled={!hasTracks}
             onClick={handleTogglePlay}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ring-4 ${
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ring-4 shrink-0 ${
               hasTracks
-                ? 'bg-teal-dark text-on-primary hover:bg-secondary ring-teal-dark/20'
+                ? 'bg-teal-dark text-white hover:bg-secondary ring-teal-dark/20'
                 : 'bg-surface-container text-on-surface-variant opacity-50 cursor-not-allowed ring-transparent'
             }`}
             title={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
           >
-            <span className="material-symbols-outlined text-3xl">
-              {isPlaying ? 'pause' : 'play_arrow'}
-            </span>
+            <Icon name={isPlaying ? 'pause' : 'play_arrow'} size={24} />
           </button>
           <button
             type="button"
             disabled={!hasTracks || currentTrackIndex >= tracks.length - 1}
             onClick={handleNextTrack}
-            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-1 active:scale-90"
+            className="text-on-surface hover:text-teal-dark disabled:opacity-30 transition-colors p-2 rounded-xl active:scale-90 flex items-center justify-center shrink-0"
             title="المقطع التالي"
           >
-            <span className="material-symbols-outlined text-2xl">skip_next</span>
+            <Icon name="skip_next" size={22} />
           </button>
           <button
             type="button"
             disabled={!hasTracks}
             onClick={toggleRepeat}
-            className={`transition-all p-1.5 rounded-lg active:scale-90 ${
+            className={`transition-all p-2 rounded-xl active:scale-90 flex items-center justify-center shrink-0 ${
               isRepeat
                 ? 'text-teal-dark bg-secondary-container/50 font-bold ring-1 ring-teal-dark/30 shadow-sm'
                 : 'text-on-surface-variant hover:text-teal-dark disabled:opacity-30'
             }`}
             title={isRepeat ? 'إلغاء تكرار الفقرة' : 'تكرار الفقرة'}
           >
-            <span className="material-symbols-outlined text-xl">repeat</span>
+            <Icon name="repeat" size={18} />
           </button>
         </div>
 
@@ -343,20 +342,18 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           <button
             type="button"
             onClick={handleYardMute}
-            className={`flex items-center gap-1.5 px-space-md py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0 ${
               isYardMuted
                 ? 'bg-error text-on-error animate-pulse'
                 : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'
             }`}
           >
-            <span className="material-symbols-outlined text-base">
-              {isYardMuted ? 'volume_off' : 'volume_up'}
-            </span>
+            <Icon name={isYardMuted ? 'volume_off' : 'volume_up'} size={16} />
             <span>{isYardMuted ? 'الساحة مكتومة' : 'كتم الساحة'}</span>
           </button>
 
           <div className="flex items-center gap-2 flex-1 max-w-[180px]">
-            <span className="text-[11px] text-on-surface-variant font-medium">مستوى صوت الساحة:</span>
+            <span className="text-[11px] text-on-surface-variant font-medium whitespace-nowrap">مستوى صوت الساحة:</span>
             <input
               type="range"
               min="0"
@@ -366,7 +363,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
               onChange={(e) => handleYardVolumeChange(Number(e.target.value))}
               className="w-full h-1.5 bg-surface-container rounded-lg appearance-none cursor-pointer accent-teal-dark"
             />
-            <span className="text-xs font-mono font-bold text-on-surface min-w-[3ch]">
+            <span className="text-xs font-mono font-bold text-on-surface min-w-[3ch] text-left">
               {isYardMuted ? '0%' : `${yardVolume}%`}
             </span>
           </div>
@@ -377,7 +374,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
       <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-dark text-xl">playlist_play</span>
+            <Icon name="library_music" size={20} className="text-teal-dark shrink-0" />
             <h4 className="font-bold text-[15px] text-on-surface">المقاطع التالية في الفقرة الإذاعية</h4>
           </div>
           <span className="text-xs font-mono text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full font-bold">
@@ -398,26 +395,26 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center font-mono text-xs font-bold text-on-surface">
+                  <span className="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center font-mono text-xs font-bold text-on-surface shrink-0">
                     {idx + 1}
                   </span>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[13px] text-on-surface">{track.title}</span>
-                    <span className="text-[11px] text-on-surface-variant">{track.speaker_or_artist}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-[13px] text-on-surface truncate">{track.title}</span>
+                    <span className="text-[11px] text-on-surface-variant truncate">{track.speaker_or_artist}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="font-mono text-xs text-on-surface-variant bg-surface-container-lowest px-1.5 py-0.5 rounded">
                     {track.duration_formatted}
                   </span>
                   <button
                     type="button"
                     onClick={() => setCurrentTrackIndex(idx)}
-                    className="w-7 h-7 rounded-full bg-surface-container-lowest text-teal-dark hover:bg-teal-dark hover:text-on-primary flex items-center justify-center transition-colors shadow-sm"
+                    className="w-7 h-7 rounded-full bg-surface-container-lowest text-teal-dark hover:bg-teal-dark hover:text-white flex items-center justify-center transition-colors shadow-sm"
                     title="تشغيل هذا المقطع"
                   >
-                    <span className="material-symbols-outlined text-sm">play_arrow</span>
+                    <Icon name="play_arrow" size={14} />
                   </button>
                 </div>
               </div>
@@ -425,7 +422,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           </div>
         ) : (
           <div className="py-6 px-4 bg-surface-container-low rounded-xl border border-dashed border-surface-container-highest flex flex-col items-center justify-center text-center gap-2">
-            <span className="material-symbols-outlined text-3xl text-on-surface-variant/60">radio</span>
+            <Icon name="library_music" size={32} className="text-on-surface-variant/60" />
             <p className="text-xs font-bold text-on-surface">لا توجد فقرات إذاعية مسجلة حالياً</p>
             <p className="text-[11px] text-on-surface-variant max-w-[240px]">
               يمكنك إدراج مواد صوتية وأناشيد وفقرات توعوية للتشغيل في الفسحة المدرسية.
@@ -439,7 +436,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ tracks, onInsert
           onClick={onInsertTrack}
           className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl border border-dashed border-teal-dark/40 hover:border-teal-dark bg-secondary-container/10 hover:bg-secondary-container/20 text-teal-dark font-bold text-xs transition-all"
         >
-          <span className="material-symbols-outlined text-base">add_circle</span>
+          <Icon name="play_circle" size={16} />
           <span>إدراج فقرة إذاعية جديدة</span>
         </button>
       </div>

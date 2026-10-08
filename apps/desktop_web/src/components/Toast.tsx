@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Icon } from './common/Icon';
 
 export interface ToastMessage {
   id: string;
@@ -77,7 +78,7 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-white/10 ${style.iconColor}`}>
-          <span className="material-symbols-outlined text-xl">{style.icon}</span>
+          <Icon name={style.icon} size={20} />
         </div>
         <div className="flex flex-col min-w-0">
           {toast.title && <span className="font-bold text-xs leading-tight mb-0.5">{toast.title}</span>}
@@ -91,7 +92,7 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
         className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors mr-2 flex-shrink-0"
         title="إغلاق"
       >
-        <span className="material-symbols-outlined text-sm">close</span>
+        <Icon name="close" size={14} />
       </button>
     </div>
   );

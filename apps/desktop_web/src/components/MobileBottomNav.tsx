@@ -1,5 +1,6 @@
 import React from 'react';
 import { TabType } from '../types';
+import { Icon } from './common/Icon';
 
 interface MobileBottomNavProps {
   currentTab: TabType;
@@ -42,9 +43,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 isActive ? 'bg-secondary-container/30 text-teal-dark scale-105' : ''
               }`}
             >
-              <span className={`material-symbols-outlined text-[22px] ${isActive ? 'font-fill' : ''}`}>
-                {item.icon}
-              </span>
+              <Icon name={item.icon} size={22} />
             </div>
             <span className="text-[11px] leading-tight mt-0.5 tracking-tight font-medium">
               {item.label}
@@ -60,9 +59,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         className="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl text-on-surface-variant hover:text-on-surface transition-all active:scale-95"
       >
         <div className="flex items-center justify-center w-10 h-7 rounded-full">
-          <span className="material-symbols-outlined text-[22px]">
-            menu
-          </span>
+          <Icon name="menu" size={22} />
         </div>
         <span className="text-[11px] leading-tight mt-0.5 tracking-tight font-medium">
           المزيد

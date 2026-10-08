@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { audioPlayerService } from '../core/audioPlayerService';
+import { Icon } from './common/Icon';
 
 export const AudioUnlockBanner: React.FC = () => {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(true);
@@ -43,7 +44,7 @@ export const AudioUnlockBanner: React.FC = () => {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-              <span className="material-symbols-outlined text-2xl animate-pulse">volume_up</span>
+              <Icon name="volume_up" size={24} className="animate-pulse" />
             </div>
             <div>
               <h4 className="font-bold text-sm text-white leading-tight">تفعيل الصوت التلقائي للأجراس</h4>
@@ -58,7 +59,7 @@ export const AudioUnlockBanner: React.FC = () => {
             className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
             title="إخفاء التنبيه"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -72,9 +73,7 @@ export const AudioUnlockBanner: React.FC = () => {
               : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold shadow-amber-500/20'
           }`}
         >
-          <span className="material-symbols-outlined text-base">
-            {justTested ? 'check_circle' : 'play_circle'}
-          </span>
+          <Icon name={justTested ? 'check_circle' : 'play_circle'} size={18} />
           <span>
             {justTested ? 'تم تفعيل السماعات بنجاح (نغمة تأكيد)' : 'تفعيل السماعات واختبار نغمة الرنين الآن'}
           </span>

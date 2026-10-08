@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabaseService } from '../../../core/supabaseService';
+import { Icon } from '../../../components/common/Icon';
 
 interface OverridesPanelProps {
   isEmergencyMuted: boolean;
@@ -106,11 +107,11 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
       {/* Top Meta Badges */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 px-space-md py-1 rounded-full bg-surface-container-high text-on-surface font-bold text-xs">
-          <span className="material-symbols-outlined text-sm text-teal-dark">event_available</span>
+          <Icon name="event_available" size={14} className="text-teal-dark shrink-0" />
           <span>الدوام المدرسي الكامل</span>
         </div>
         <div className="flex items-center gap-1.5 px-space-md py-1 rounded-full bg-surface-container-low text-on-surface-variant font-mono text-xs">
-          <span className="material-symbols-outlined text-sm text-teal-dark">speaker_group</span>
+          <Icon name="speaker_group" size={14} className="text-teal-dark shrink-0" />
           <span>مكبرات الصوت النشطة</span>
         </div>
       </div>
@@ -119,8 +120,8 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
       <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-error/30 flex flex-col gap-space-md relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-error-container text-error flex items-center justify-center font-bold">
-              <span className="material-symbols-outlined text-2xl">warning</span>
+            <div className="w-10 h-10 rounded-xl bg-error-container text-error flex items-center justify-center font-bold shrink-0">
+              <Icon name="warning" size={22} className="text-error" />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-[15px] text-error leading-tight">صمت الطوارئ العام</span>
@@ -145,9 +146,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
               : 'bg-error hover:bg-error/90 text-on-error shadow-error/30'
           }`}
         >
-          <span className="material-symbols-outlined text-xl">
-            {isEmergencyMuted ? 'check_circle' : 'emergency_share'}
-          </span>
+          <Icon name={isEmergencyMuted ? 'check_circle' : 'emergency'} size={20} className="shrink-0" />
           <span>
             {isEmergencyMuted
               ? 'صمت الطوارئ مفعل حالياً (اضغط لإلغاء الصمت)'
@@ -164,7 +163,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
           className="flex items-center justify-between w-full text-right p-1 hover:bg-surface-container-low rounded-lg transition-colors"
         >
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-dark text-xl">notification_important</span>
+            <Icon name="notification_important" size={20} className="text-teal-dark shrink-0" />
             <div className="flex flex-col">
               <h4 className="font-bold text-[14px] text-on-surface">أجراس التجاوز اليدوي المباشر</h4>
               <span className="text-[10px] text-on-surface-variant">رنين فوري لدخول الطلاب والانصراف وتنبيه الحصة</span>
@@ -174,9 +173,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
             <span className="text-[10px] font-bold text-teal-dark bg-secondary-fixed/50 px-2 py-0.5 rounded-full">
               {showInstantBells ? 'إخفاء الأزرار' : 'إظهار الأزرار'}
             </span>
-            <span className="material-symbols-outlined text-on-surface-variant text-base">
-              {showInstantBells ? 'expand_less' : 'expand_more'}
-            </span>
+            <Icon name={showInstantBells ? 'expand_less' : 'expand_more'} size={18} className="text-on-surface-variant" />
           </div>
         </button>
 
@@ -193,16 +190,17 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
                   type="button"
                   onClick={() => handlePlayBell('جرس الدخول المباشر', 20, 'INSTANT_ENTRY')}
                   disabled={countdown !== null}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm shrink-0 ${
                     countdown?.bell === 'جرس الدخول المباشر'
                       ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
                       : 'bg-primary text-on-primary hover:bg-teal-dark disabled:opacity-40'
                   }`}
                   title="رنين فوري"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    {countdown?.bell === 'جرس الدخول المباشر' ? 'notifications_active' : 'play_arrow'}
-                  </span>
+                  <Icon
+                    name={countdown?.bell === 'جرس الدخول المباشر' ? 'notifications_active' : 'play_arrow'}
+                    size={20}
+                  />
                 </button>
                 <div className="flex flex-col">
                   <span className="font-bold text-[13px]">جرس الدخول المباشر</span>
@@ -229,16 +227,17 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
                   type="button"
                   onClick={() => handlePlayBell('جرس الانصراف', 15, 'INSTANT_EXIT')}
                   disabled={countdown !== null}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm shrink-0 ${
                     countdown?.bell === 'جرس الانصراف'
                       ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
                       : 'bg-teal-dark text-on-primary hover:bg-secondary disabled:opacity-40'
                   }`}
                   title="رنين فوري"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    {countdown?.bell === 'جرس الانصراف' ? 'notifications_active' : 'play_arrow'}
-                  </span>
+                  <Icon
+                    name={countdown?.bell === 'جرس الانصراف' ? 'notifications_active' : 'play_arrow'}
+                    size={20}
+                  />
                 </button>
                 <div className="flex flex-col">
                   <span className="font-bold text-[13px]">جرس الانصراف</span>
@@ -265,16 +264,17 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
                   type="button"
                   onClick={() => handlePlayBell('تنبيه نهاية الحصة', 10, 'PERIOD_END')}
                   disabled={countdown !== null}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm shrink-0 ${
                     countdown?.bell === 'تنبيه نهاية الحصة'
                       ? 'bg-teal-dark text-white ring-4 ring-teal-dark/40 animate-pulse'
                       : 'bg-surface-container-highest text-on-surface hover:bg-teal-dark hover:text-on-primary disabled:opacity-40'
                   }`}
                   title="رنين فوري"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    {countdown?.bell === 'تنبيه نهاية الحصة' ? 'notifications_active' : 'play_arrow'}
-                  </span>
+                  <Icon
+                    name={countdown?.bell === 'تنبيه نهاية الحصة' ? 'notifications_active' : 'play_arrow'}
+                    size={20}
+                  />
                 </button>
                 <div className="flex flex-col">
                   <span className="font-bold text-[13px]">تنبيه نهاية الحصة</span>
@@ -297,7 +297,7 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
       <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high/60 flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-dark text-xl">mic</span>
+            <Icon name="mic" size={20} className="text-teal-dark shrink-0" />
             <h4 className="font-bold text-[15px] text-on-surface">البث المباشر للميكروفون</h4>
           </div>
           <span
@@ -384,13 +384,11 @@ export const OverridesPanel: React.FC<OverridesPanelProps> = ({
                       : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-container'
                   }`}
                 >
-                  <span
-                    className={`material-symbols-outlined text-sm ${
-                      isSelected ? 'text-teal-accent' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    {isSelected ? 'check_box' : 'check_box_outline_blank'}
-                  </span>
+                  <Icon
+                    name={isSelected ? 'check_box' : 'check_box_outline_blank'}
+                    size={16}
+                    className={isSelected ? 'text-teal-accent' : 'text-on-surface-variant'}
+                  />
                   <span>{zone}</span>
                 </button>
               );

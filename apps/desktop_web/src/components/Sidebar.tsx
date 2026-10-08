@@ -1,5 +1,6 @@
 import React from 'react';
 import { TabType } from '../types';
+import { Icon } from './common/Icon';
 
 interface SidebarProps {
   currentTab: TabType;
@@ -41,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img
               src="/assets/smartbell_icon.png"
               alt="SmartBell Desk Logo"
-              className="h-10 w-10 rounded-xl object-contain shadow-sm bg-primary-container p-0.5 border border-teal-dark/30"
+              className="h-10 w-10 rounded-xl object-contain shadow-sm bg-primary-container p-0.5 border border-teal-dark/30 shrink-0"
             />
             <div className="flex flex-col">
               <span className="font-bold text-[17px] text-on-surface leading-tight tracking-tight">SmartBell Desk</span>
@@ -57,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="p-1.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
               title="إغلاق القائمة"
             >
-              <span className="material-symbols-outlined text-2xl">close</span>
+              <Icon name="close" size={20} />
             </button>
           )}
         </div>
@@ -77,22 +78,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleItemClick(item.id)}
-                className={`flex items-center gap-space-md px-space-md py-2.5 rounded-xl transition-all text-right w-full group ${
+                className={`flex items-center gap-3 px-space-md py-2.5 rounded-xl transition-all text-right w-full group ${
                   isActive
                     ? 'bg-primary-container text-on-primary-fixed font-bold shadow-md shadow-primary-container/20 ring-1 ring-white/10'
                     : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               >
-                <span
-                  className={`material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 ${
+                <div
+                  className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                     isActive ? 'text-teal-accent' : 'text-on-surface-variant group-hover:text-teal-dark'
                   }`}
                 >
-                  {item.icon}
-                </span>
-                <span className="text-[14px] flex-1">{item.label}</span>
+                  <Icon name={item.icon} size={20} />
+                </div>
+                <span className="text-[14px] flex-1 truncate">{item.label}</span>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-accent animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-accent animate-pulse shrink-0"></span>
                 )}
               </button>
             );
@@ -107,10 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center justify-between w-full px-space-md py-space-sm rounded-xl text-error hover:bg-error-container hover:text-on-error-container transition-all"
         >
           <div className="flex items-center gap-space-md">
-            <span className="material-symbols-outlined text-xl">logout</span>
+            <Icon name="close" size={18} />
             <span className="text-label-lg font-bold">تسجيل الخروج</span>
           </div>
-          <span className="text-label-sm opacity-70 font-mono bg-surface-container px-2 py-0.5 rounded-md font-bold">v2.6</span>
+          <span className="text-label-sm opacity-70 font-mono bg-surface-container px-2 py-0.5 rounded-md font-bold">v2.7</span>
         </button>
       </div>
     </div>
