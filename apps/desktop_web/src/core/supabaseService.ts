@@ -712,17 +712,12 @@ export class SupabaseService {
       }
 
       const originalName = (file instanceof File ? file.name : customFileName) || 'audio_track.mp3';
-      const fileExt = (originalName.split('.').pop() || 'mp3').toLowerCase();
+      const fileExt = (originalName.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
       const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(2, 7);
+      const randomSuffix = Math.random().toString(36).substring(2, 9);
       
-      // Clean slug keeping alphanumeric characters
-      const cleanBase = originalName
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '_')
-        .slice(0, 30);
-
-      const filePath = `tracks/${timestamp}_${cleanBase}_${randomSuffix}.${fileExt}`;
+      // Pure ASCII-only storage key to satisfy S3/Supabase Storage key constraints
+      const filePath = `tracks/${timestamp}_${randomSuffix}.${fileExt}`;
 
       let mimeType = (file as any).type;
       if (!mimeType || mimeType === 'application/octet-stream' || !mimeType.startsWith('audio/')) {
